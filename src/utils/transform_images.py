@@ -3,18 +3,18 @@ import shutil
 
 from PIL import Image
 import os
-f_path = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/non-erotic")
-dest_path_resized = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/non-erotic/non-erotic_resized")
+f_path = pathlib.Path("../../data/train/non-erotic")
+dest_path_resized = pathlib.Path("../../data/train/non-erotic/non-erotic_resized")
 if not os.path.exists(dest_path_resized):
     os.makedirs(dest_path_resized)
-dest_path_cut = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/non-erotic/non-erotic_cut")
+dest_path_cut = pathlib.Path("../../data/train/non-erotic/non-erotic_cut")
 if not os.path.exists(dest_path_cut):
     os.makedirs(dest_path_cut)
-f_path_erotic = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/erotic")
-dest_path_resized_erotic = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/erotic/erotic_resized")
+f_path_erotic = pathlib.Path("../../data/train/erotic")
+dest_path_resized_erotic = pathlib.Path("../../data/train/erotic/erotic_resized")
 if not os.path.exists(dest_path_resized_erotic):
     os.makedirs(dest_path_resized_erotic)
-dest_path_cut_erotic = pathlib.Path("/Users/elizabeth/PycharmProjects/Ultimate_ML_Project/data/train/erotic/erotic_cut")
+dest_path_cut_erotic = pathlib.Path("../../data/train/erotic/erotic_cut")
 if not os.path.exists(dest_path_cut_erotic):
     os.makedirs(dest_path_cut_erotic)
 
@@ -26,16 +26,17 @@ def rename_pics(file_path, name):
         new_name = name + str(i) + path.suffix
         path.rename(file_path / new_name)
         n = i
-    for i, path in enumerate(file_path.glob('*.JPG')):
+    # for i, path in enumerate(file_path.glob('*.JPG')):
+    #     print(n + i + 1)
+    #     new_name = name + str(n + i + 1) + path.suffix
+    #     path.rename(file_path / new_name)
+    #     k = n + i + 1
+    for i, path in enumerate(file_path.glob('*.png')):
         new_name = name + str(n + i + 1) + path.suffix
         path.rename(file_path / new_name)
-        k = n + i + 1
-    for i, path in enumerate(file_path.glob('*.png')):
-        new_name = name + str(k + i + 1) + path.suffix
-        path.rename(file_path / new_name)
 
 
-rename_pics(f_path_erotic, 'erotic')
+rename_pics(f_path, 'non-erotic')
 
 
 def resize_pics(file_path, dest, new_size):
@@ -60,7 +61,7 @@ def resize_pics(file_path, dest, new_size):
             #     print(img.size)
 
 
-# resize_pics(f_path, dest_path_resized, 100)
+resize_pics(f_path, dest_path_resized, 100)
 
 
 def cut_pics(image, m):
@@ -94,6 +95,6 @@ def save_cut_pics(file_path, dest, m):
             # print(f"Изображение {filename} разрезано на {m*m} фрагментов и сохранено")
 
 
-# save_cut_pics(f_path, dest_path_cut, 3)
+save_cut_pics(f_path, dest_path_cut, 3)
 
 
