@@ -1,47 +1,37 @@
-import pathlib
-import shutil
-
 from PIL import Image
 import os
-f_path = pathlib.Path("../../data/train/non-erotic")
-dest_path_resized = pathlib.Path("../../data/train/non-erotic/non-erotic_resized")
-if not os.path.exists(dest_path_resized):
-    os.makedirs(dest_path_resized)
-dest_path_cut = pathlib.Path("../../data/train/non-erotic/non-erotic_cut")
-if not os.path.exists(dest_path_cut):
-    os.makedirs(dest_path_cut)
-f_path_erotic = pathlib.Path("../../data/train/erotic")
-dest_path_resized_erotic = pathlib.Path("../../data/train/erotic/erotic_resized")
-if not os.path.exists(dest_path_resized_erotic):
-    os.makedirs(dest_path_resized_erotic)
-dest_path_cut_erotic = pathlib.Path("../../data/train/erotic/erotic_cut")
-if not os.path.exists(dest_path_cut_erotic):
-    os.makedirs(dest_path_cut_erotic)
+
+
+def to_jpg(file_path):
+    for file_name in os.listdir(file_path):
+        full_path = os.path.join(file_path, file_name)
+        if os.path.isfile(full_path) and not file_name.startswith('.'):
+            if file_name.endswith('jpg'):
+                continue
+            else:
+                img_path = os.path.join(file_path, file_name)
+                try:
+                    img = Image.open(img_path)
+                    if img.mode == 'RGBA':
+                        img = img.convert('RGB')
+                    new_path = os.path.join(file_path, file_name.split('.')[0] + '.jpg')
+                    img.save(new_path, 'JPEG')
+                    os.remove(img_path)
+                except Exception as e:
+                    print(f"impossible to reformat the file {file_name}: {e}")
+        elif os.path.isdir(full_path):
+            continue
 
 
 def rename_pics(file_path, name):
-    n = 0
-    k = 0
     for i, path in enumerate(file_path.glob('*.jpg')):
         new_name = name + str(i) + path.suffix
         path.rename(file_path / new_name)
-        n = i
-    # for i, path in enumerate(file_path.glob('*.JPG')):
-    #     print(n + i + 1)
-    #     new_name = name + str(n + i + 1) + path.suffix
-    #     path.rename(file_path / new_name)
-    #     k = n + i + 1
-    for i, path in enumerate(file_path.glob('*.png')):
-        new_name = name + str(n + i + 1) + path.suffix
-        path.rename(file_path / new_name)
-
-
-rename_pics(f_path, 'non-erotic')
 
 
 def resize_pics(file_path, dest, new_size):
     for file_name in os.listdir(file_path):
-        if file_name.endswith('.jpg') or file_name.endswith('.png') or file_name.endswith('.JPG'):
+        if file_name.endswith('.jpg'):
             img_path = os.path.join(file_path, file_name)
             img = Image.open(img_path)
             (width, height) = img.size
@@ -55,13 +45,6 @@ def resize_pics(file_path, dest, new_size):
             new_file_name = 'resized_' + file_name
             new_img_path = os.path.join(dest, new_file_name)
             img_resized.save(new_img_path)
-            # for filename in os.listdir(dest_path):
-            #     img_path = os.path.join(dest_path, filename)
-            #     img = Image.open(img_path)
-            #     print(img.size)
-
-
-resize_pics(f_path, dest_path_resized, 100)
 
 
 def cut_pics(image, m):
@@ -74,27 +57,16 @@ def cut_pics(image, m):
             box = (j * step, i * step, (j + 1) * step, (i + 1) * step)
             cropped_img = image.crop(box)
             cropped_images.append(cropped_img)
-
     return cropped_images
 
 
 def save_cut_pics(file_path, dest, m):
     for filename in os.listdir(file_path):
-        if filename.endswith('.jpg') or filename.endswith('.png') or filename.endswith('.JPG'):
+        if filename.endswith('.jpg'):
             img_path = os.path.join(file_path, filename)
             img = Image.open(img_path)
-
             cropped_images = cut_pics(img, m)
-
             for idx, cropped_img in enumerate(cropped_images):
                 new_filename = f"{filename.split('.')[0]}_cut_{idx}.{filename.split('.')[1]}"
                 new_img_path = os.path.join(dest, new_filename)
-
                 cropped_img.save(new_img_path)
-
-            # print(f"Изображение {filename} разрезано на {m*m} фрагментов и сохранено")
-
-
-save_cut_pics(f_path, dest_path_cut, 3)
-
-
