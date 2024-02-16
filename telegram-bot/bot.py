@@ -2,8 +2,7 @@ import telebot
 from telebot import types
 from PIL import Image
 import os
-
-bot = telebot.TeleBot('token here')
+from token import bot
 
 
 @bot.message_handler(commands=['start'])
