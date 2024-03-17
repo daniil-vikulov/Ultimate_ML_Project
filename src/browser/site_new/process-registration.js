@@ -6,6 +6,7 @@ const email = req.body.email;
 const password = req.body.password;
 
 
+
 db.serialize(() => {
     db.run("INSERT INTO users (user_name, email, password_user) VALUES (?, ?, ?), [username, email, password]", function(err) {
         if (err) {
