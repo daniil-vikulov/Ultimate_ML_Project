@@ -58,52 +58,66 @@
           <img src="images/default-logo.png" class="u-logo-image u-logo-image-1">
         </a>
       </div></header>
-    <section class="u-align-center u-clearfix u-image u-section-1" id="sec-30b6" data-image-width="5000" data-image-height="2500">
-      <div class="u-clearfix u-sheet u-sheet-1">
-        <h3 class="u-align-center u-text u-text-1">Registration</h3>
-        <h5 class="u-align-center u-text u-text-default u-text-2">
-          <a class="u-active-none u-border-2 u-border-no-left u-border-no-right u-border-no-top u-border-palette-1-dark-1 u-btn u-button-link u-button-style u-hover-none u-none u-text-hover-palette-2-base u-text-palette-1-base u-btn-1" data-href="Registration.html" href="Registration.html">
-            <span class="u-text-palette-1-dark-1">Log in</span>
-          </a>
-        </h5>
-        <h4 class="u-align-center u-text u-text-default-lg u-text-default-xl u-text-3"> if you already have an account</h4>
-        <div class="data-layout-selected u-clearfix u-expanded-width-xs u-layout-wrap u-layout-wrap-1">
-          <div class="u-layout">
-            <div class="u-layout-row">
-              <div class="u-container-align-center u-container-style u-layout-cell u-shape-rectangle u-size-60 u-white u-layout-cell-1" data-animation-out="0">
-                <div class="u-container-layout u-container-layout-1">
-                  <div class="u-expanded-width u-form u-form-1">
-                    <form action="https://forms.nicepagesrv.com/v2/form/process" class="u-clearfix u-form-spacing-10 u-form-vertical u-inner-form" source="email" name="form" style="padding: 10px;">
-                      <div class="u-form-group u-form-name">
-                        <label for="name-db69" class="u-label">Name</label>
-                        <input type="text" placeholder="Enter your Name" id="name-db69" name="name" class="u-input u-input-rectangle" required="">
-                      </div>
-                      <div class="u-form-group u-form-message">
-                        <label for="message-db69" class="u-label">Login</label>
-                        <textarea placeholder="Enter your login" rows="1" cols="50" id="message-db69" name="login" class="u-input u-input-rectangle" required=""></textarea>
-                      </div>
-                      <div class="u-form-email u-form-group">
-                        <label for="email-db69" class="u-label">Email</label>
-                        <input type="email" placeholder="Enter a valid email address" id="email-db69" name="email" class="u-input u-input-rectangle" required="">
-                      </div>
-                      <div class="u-form-group u-form-submit">
-                        <a href="#" class="u-btn u-btn-submit u-button-style">Submit</a>
-                        <input type="submit" value="submit" class="u-form-control-hidden">
-                      </div>
-                      <div class="u-form-send-message u-form-send-success"> Thank you! Your message has been sent. </div>
-                      <div class="u-form-send-error u-form-send-message"> Unable to send your message. Please fix errors then try again. </div>
-                      <input type="hidden" value="" name="recaptchaResponse">
-                      <input type="hidden" name="formServices" value="fd5d84e5-6455-a5c9-136f-aa74c9cbebd4">
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    
+  <div class="container">
+      <form id="registrationForm" action="process_registration.js" method="post">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required><br><br>
+
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required><br><br>
+
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required><br><br>
+
+          <button type="submit">Register</button>
+      </form>
+  </div>
+<!--    <section class="u-align-center u-clearfix u-image u-section-1" id="sec-30b6" data-image-width="5000" data-image-height="2500">-->
+<!--      <div class="u-clearfix u-sheet u-sheet-1">-->
+<!--        <h3 class="u-align-center u-text u-text-1">Registration</h3>-->
+<!--        <h5 class="u-align-center u-text u-text-default u-text-2">-->
+<!--          <a class="u-active-none u-border-2 u-border-no-left u-border-no-right u-border-no-top u-border-palette-1-dark-1 u-btn u-button-link u-button-style u-hover-none u-none u-text-hover-palette-2-base u-text-palette-1-base u-btn-1" data-href="Registration.html" href="Registration.html">-->
+<!--            <span class="u-text-palette-1-dark-1">Log in</span>-->
+<!--          </a>-->
+<!--        </h5>-->
+<!--        <h4 class="u-align-center u-text u-text-default-lg u-text-default-xl u-text-3"> if you already have an account</h4>-->
+<!--        <div class="data-layout-selected u-clearfix u-expanded-width-xs u-layout-wrap u-layout-wrap-1">-->
+<!--          <div class="u-layout">-->
+<!--            <div class="u-layout-row">-->
+<!--              <div class="u-container-align-center u-container-style u-layout-cell u-shape-rectangle u-size-60 u-white u-layout-cell-1" data-animation-out="0">-->
+<!--                <div class="u-container-layout u-container-layout-1">-->
+<!--                  <div class="u-expanded-width u-form u-form-1">-->
+<!--                    <form action="https://forms.nicepagesrv.com/v2/form/process" class="u-clearfix u-form-spacing-10 u-form-vertical u-inner-form" source="email" name="form" style="padding: 10px;">-->
+<!--                      <div class="u-form-group u-form-name">-->
+<!--                        <label for="name-db69" class="u-label">Name</label>-->
+<!--                        <input type="text" placeholder="Enter your Name" id="name-db69" name="name" class="u-input u-input-rectangle" required="">-->
+<!--                      </div>-->
+<!--                      <div class="u-form-group u-form-message">-->
+<!--                        <label for="message-db69" class="u-label">Login</label>-->
+<!--                        <textarea placeholder="Enter your login" rows="1" cols="50" id="message-db69" name="login" class="u-input u-input-rectangle" required=""></textarea>-->
+<!--                      </div>-->
+<!--                      <div class="u-form-email u-form-group">-->
+<!--                        <label for="email-db69" class="u-label">Email</label>-->
+<!--                        <input type="email" placeholder="Enter a valid email address" id="email-db69" name="email" class="u-input u-input-rectangle" required="">-->
+<!--                      </div>-->
+<!--                      <div class="u-form-group u-form-submit">-->
+<!--                        <a href="#" class="u-btn u-btn-submit u-button-style">Submit</a>-->
+<!--                        <input type="submit" value="submit" class="u-form-control-hidden">-->
+<!--                      </div>-->
+<!--                      <div class="u-form-send-message u-form-send-success"> Thank you! Your message has been sent. </div>-->
+<!--                      <div class="u-form-send-error u-form-send-message"> Unable to send your message. Please fix errors then try again. </div>-->
+<!--                      <input type="hidden" value="" name="recaptchaResponse">-->
+<!--                      <input type="hidden" name="formServices" value="fd5d84e5-6455-a5c9-136f-aa74c9cbebd4">-->
+<!--                    </form>-->
+<!--                  </div>-->
+<!--                </div>-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    </section>-->
+<!--    -->
     
     
     <footer class="u-align-center u-clearfix u-footer u-grey-80 u-footer" id="sec-9f68"><div class="u-clearfix u-sheet u-sheet-1"></div></footer>
