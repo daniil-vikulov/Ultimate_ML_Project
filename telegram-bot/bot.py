@@ -2,7 +2,9 @@ import telebot
 from telebot import types
 from PIL import Image
 import os
-from token_bot import bot
+from token_bot import bot, mytoken
+import requests
+
 
 @bot.message_handler(commands=['start'])
 def start_function(user_message):
@@ -15,11 +17,14 @@ image_cnt = 1
 
 
 @bot.message_handler(content_types=['photo', 'document'])
-def handle_sent_images(user_message):
+def save_and_send_back(user_message):
     global image_cnt
     if user_message.content_type == 'photo':
         file_id = user_message.photo[-1].file_id
         file_info = bot.get_file(file_id)
+        photo_url = f'https://api.telegram.org/file/bot{mytoken}/{file_info.file_path}'
+        photo = requests.get(photo_url)
+        bot.send_photo(user_message.chat.id, photo.content)
         download_image = bot.download_file(file_info.file_path)
         file_name = f'image_{image_cnt}.jpg'
         with open(file_name, 'wb') as img:
@@ -29,14 +34,15 @@ def handle_sent_images(user_message):
     elif user_message.content_type == 'document':
         file_id = user_message.document.file_id
         file_info = bot.get_file(file_id)
+        photo_url = f'https://api.telegram.org/file/bot{mytoken}/{file_info.file_path}'
+        photo = requests.get(photo_url)
+        bot.send_photo(user_message.chat.id, photo.content)
         download_image = bot.download_file(file_info.file_path)
-        file_name = f'image_{image_cnt}.png'
+        file_name = f'image_{image_cnt}.jpg'
         with open(file_name, 'wb') as img:
             img.write(download_image)
         bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
         image_cnt += 1
-    else:
-        bot.send_message('Пожалуйста отправьте файл, либо фото (в форматах .jpg или .png)')
 
 
 bot.polling(none_stop=True)
