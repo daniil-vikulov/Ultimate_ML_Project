@@ -5,6 +5,8 @@ import os.path
 from token_bot import bot, mytoken
 import requests
 from nudenet import NudeDetector
+from telebot import util
+
 nude_detector = NudeDetector()
 
 
@@ -15,7 +17,33 @@ def start_function(user_message):
                      f'Проверь свое фото на наличие неприличного контента')
 
 
+@bot.message_handler(commands=['help'])
+def help_function(user_message):
+    bot.send_message(user_message.chat.id, f"{user_message.from_user.first_name}!\n"
+                                           f"Просим заметить, что действует ограничение на количество "
+                                           f"бесплатных запросов, максимальное количество = 1 запрос в минуту\n"
+                                           f"для того, чтобы протестировать работу сервиса, "
+                                           f"воспользуйтесь командой /test \n"
+                                           f"Если вы удовлетворены всем функционалом сервиса, предлагаем оплатить "
+                                           f"безлимитный доступ. Это можно сделать с помощью команды /pay \n",
+                     parse_mode='html')
+
+
 image_cnt = 1
+
+
+@bot.message_handler(commands=['test'])
+def review(user_message):
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.add(telebot.types.InlineKeyboardButton(text="да", callback_data="test.yes"))
+    bot.send_message(user_message.chat.id, "хотите проверить фото на наличие непристойного контента?",
+                     reply_markup=keyboard)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("test"))
+def write_ans(call):
+    if call.message:
+        bot.send_message(call.message.chat.id, "отправьте фото на проверку:)))))))")
 
 
 @bot.message_handler(content_types=['photo', 'document'])
@@ -32,6 +60,16 @@ def save_and_send_back(user_message):
         with open(file_name, 'wb') as img:
             img.write(download_image)
         bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
+        # detected = nude_detector.detect(f'image_{image_cnt}.jpg')
+        # if detected is None:
+        #     bot.send_photo(user_message.chat.id, photo.content)
+        # else:
+            # keyboard = telebot.types.InlineKeyboardMarkup()
+            # keyboard.add(telebot.types.InlineKeyboardButton(text="черный", callback_data="colour.black"))
+            # bot.send_message(user_message.chat.id,
+            #                  "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
+            #                  reply_markup=keyboard)
+            # bot.register_next_step_handler(user_message, lambda m: colour(m, file_name))
         censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
         bot.send_photo(user_message.chat.id, censored)
         censored.close()
@@ -53,5 +91,26 @@ def save_and_send_back(user_message):
         image_cnt += 1
 
 
-bot.polling(none_stop=True)
+# def colour(user_message, file_name):
+#     chosen_colour = user_message.text.lower()
+#     if chosen_colour == "черный":
+#         censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
+#         bot.send_photo(user_message.chat.id, censored)
+#         censored.close()
 
+
+# @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
+# def colour(call):
+#     if call.message:
+#         if call.data == "colour.black":
+#             censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
+#             bot.send_photo(call.message.chat.id, censored)
+#             censored.close()
+#             bot.send_photo(call.message.chat.id, censored)
+
+# @bot.message_handler(commands=["pay"])
+# def payment():
+#
+
+
+bot.polling(none_stop=True)
