@@ -60,19 +60,21 @@ def save_and_send_back(user_message):
         with open(file_name, 'wb') as img:
             img.write(download_image)
         bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
-        # detected = nude_detector.detect(f'image_{image_cnt}.jpg')
-        # if detected is None:
-        #     bot.send_photo(user_message.chat.id, photo.content)
-        # else:
-            # keyboard = telebot.types.InlineKeyboardMarkup()
-            # keyboard.add(telebot.types.InlineKeyboardButton(text="черный", callback_data="colour.black"))
-            # bot.send_message(user_message.chat.id,
-            #                  "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
-            #                  reply_markup=keyboard)
-            # bot.register_next_step_handler(user_message, lambda m: colour(m, file_name))
-        censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
-        bot.send_photo(user_message.chat.id, censored)
-        censored.close()
+        detected = nude_detector.detect(f'image_{image_cnt}.jpg')
+        # print(detected)
+        if not detected:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.add(telebot.types.InlineKeyboardButton(text="дальше", callback_data=f"next:{file_name}"))
+            bot.send_message(user_message.chat.id,
+                             "ура ура! фото приличное:)",
+                             reply_markup=keyboard)
+        else:
+            censored_name = nude_detector.censor(f'image_{image_cnt}.jpg')
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.add(telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{censored_name}"))
+            bot.send_message(user_message.chat.id,
+                             "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
+                             reply_markup=keyboard)
         image_cnt += 1
     elif user_message.content_type == 'document':
         file_id = user_message.document.file_id
@@ -85,32 +87,48 @@ def save_and_send_back(user_message):
         with open(file_name, 'wb') as img:
             img.write(download_image)
         bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
-        censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
-        bot.send_photo(user_message.chat.id, censored)
-        censored.close()
+        detected = nude_detector.detect(f'image_{image_cnt}.jpg')
+        # print(detected)
+        if not detected:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.add(telebot.types.InlineKeyboardButton(text="дальше", callback_data=f"next:{file_name}"))
+            bot.send_message(user_message.chat.id,
+                             "ура ура! фото приличное:)",
+                             reply_markup=keyboard)
+        else:
+            censored_name = nude_detector.censor(f'image_{image_cnt}.jpg')
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.add(
+                telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{censored_name}"))
+            bot.send_message(user_message.chat.id,
+                             "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
+                             reply_markup=keyboard)
         image_cnt += 1
 
 
-# def colour(user_message, file_name):
-#     chosen_colour = user_message.text.lower()
-#     if chosen_colour == "черный":
-#         censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
-#         bot.send_photo(user_message.chat.id, censored)
-#         censored.close()
+@bot.callback_query_handler(func=lambda call: call.data.startswith("next"))
+def colour(call):
+    if call.message:
+        name = call.data.split(':')[1]
+        os.remove(name)
 
 
-# @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
-# def colour(call):
-#     if call.message:
-#         if call.data == "colour.black":
-#             censored = open(nude_detector.censor(f'image_{image_cnt}.jpg'), 'rb')
-#             bot.send_photo(call.message.chat.id, censored)
-#             censored.close()
-#             bot.send_photo(call.message.chat.id, censored)
+@bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
+def colour(call):
+    if call.message:
+        censored = call.data.split(':')[2]
+        chosen_colour = call.data.split(':')[1]
+        if chosen_colour == "black":
+            with open(censored, 'rb') as c:
+                bot.send_photo(call.message.chat.id, c)
+            os.remove(censored)
+            original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
+            os.remove(original)
+
 
 # @bot.message_handler(commands=["pay"])
 # def payment():
-#
+#     todo
 
 
 bot.polling(none_stop=True)
