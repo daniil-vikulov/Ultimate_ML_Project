@@ -6,6 +6,7 @@ from token_bot import bot, mytoken
 import requests
 from nudenet import NudeDetector
 from telebot import util
+from censor import censor_black, censor_blue
 
 nude_detector = NudeDetector()
 
@@ -36,6 +37,7 @@ image_cnt = 1
 def review(user_message):
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.add(telebot.types.InlineKeyboardButton(text="да", callback_data="test.yes"))
+    keyboard.add(telebot.types.InlineKeyboardButton(text="нет", callback_data="test.no"))
     bot.send_message(user_message.chat.id, "хотите проверить фото на наличие непристойного контента?",
                      reply_markup=keyboard)
 
@@ -43,7 +45,10 @@ def review(user_message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("test"))
 def write_ans(call):
     if call.message:
-        bot.send_message(call.message.chat.id, "отправьте фото на проверку:)))))))")
+        if call.data == "test.yes":
+            bot.send_message(call.message.chat.id, "отправьте фото на проверку:)))))))")
+        if call.data == "test.no":
+            bot.send_message(call.message.chat.id, "квак плак, не больно то надо")
 
 
 @bot.message_handler(content_types=['photo', 'document'])
@@ -59,7 +64,7 @@ def save_and_send_back(user_message):
         file_name = f'image_{image_cnt}.jpg'
         with open(file_name, 'wb') as img:
             img.write(download_image)
-        bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
+        # bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
         detected = nude_detector.detect(f'image_{image_cnt}.jpg')
         # print(detected)
         if not detected:
@@ -69,9 +74,11 @@ def save_and_send_back(user_message):
                              "ура ура! фото приличное:)",
                              reply_markup=keyboard)
         else:
-            censored_name = nude_detector.censor(f'image_{image_cnt}.jpg')
+            # censored_name = censor_black(f'image_{image_cnt}.jpg')
             keyboard = telebot.types.InlineKeyboardMarkup()
-            keyboard.add(telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{censored_name}"))
+            keyboard.add(telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{file_name}"))
+            keyboard.add(
+                telebot.types.InlineKeyboardButton(text="синий", callback_data=f"colour:blue:{file_name}"))
             bot.send_message(user_message.chat.id,
                              "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
                              reply_markup=keyboard)
@@ -86,7 +93,7 @@ def save_and_send_back(user_message):
         file_name = f'image_{image_cnt}.jpg'
         with open(file_name, 'wb') as img:
             img.write(download_image)
-        bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
+        # bot.send_message(user_message.chat.id, f'Фото успешно сохранено под названием image_{image_cnt}.jpg')
         detected = nude_detector.detect(f'image_{image_cnt}.jpg')
         # print(detected)
         if not detected:
@@ -96,10 +103,12 @@ def save_and_send_back(user_message):
                              "ура ура! фото приличное:)",
                              reply_markup=keyboard)
         else:
-            censored_name = nude_detector.censor(f'image_{image_cnt}.jpg')
+            # censored_name = censor_black(f'image_{image_cnt}.jpg')
             keyboard = telebot.types.InlineKeyboardMarkup()
             keyboard.add(
-                telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{censored_name}"))
+                telebot.types.InlineKeyboardButton(text="черный", callback_data=f"colour:black:{file_name}"))
+            keyboard.add(
+                telebot.types.InlineKeyboardButton(text="синий", callback_data=f"colour:blue:{file_name}"))
             bot.send_message(user_message.chat.id,
                              "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
                              reply_markup=keyboard)
@@ -107,18 +116,27 @@ def save_and_send_back(user_message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("next"))
-def colour(call):
+def next_img(call):
     if call.message:
         name = call.data.split(':')[1]
         os.remove(name)
+        bot.send_message(call.message.chat.id, "отправьте следующее фото:)")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
     if call.message:
-        censored = call.data.split(':')[2]
+        file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]
         if chosen_colour == "black":
+            censored = censor_black(file_name)
+            with open(censored, 'rb') as c:
+                bot.send_photo(call.message.chat.id, c)
+            os.remove(censored)
+            original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
+            os.remove(original)
+        if chosen_colour == "blue":
+            censored = censor_blue(file_name)
             with open(censored, 'rb') as c:
                 bot.send_photo(call.message.chat.id, c)
             os.remove(censored)
