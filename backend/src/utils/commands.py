@@ -1,7 +1,5 @@
 from transform_images import rename_pics, resize_pics, save_cut_pics, to_jpg
-from backend.src.utils.paths import f_path_non_erotic, dest_path_resized_non_erotic, dest_path_cut_non_erotic, \
-    f_path_erotic, dest_path_resized_erotic, dest_path_cut_erotic, \
-    f_path_porn, dest_path_resized_porn, dest_path_cut_porn
+from src.utils.paths import f_path_non_erotic, dest_path_resized_non_erotic, dest_path_cut_non_erotic, \
 
 to_jpg(f_path_non_erotic)
 to_jpg(f_path_erotic)
