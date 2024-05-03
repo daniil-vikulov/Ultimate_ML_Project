@@ -1,6 +1,6 @@
 import cv2
 
-img = cv2.imread('../data//train//non-erotic//1.jpg')
+img = cv2.imread('../../data/train/non-erotic/1.jpg')
 # get the dimensions of the image
 height, width, channels = img.shape
 print(f"Image dimensions: {width}x{height}, {channels} channels")
