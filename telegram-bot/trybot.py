@@ -34,9 +34,8 @@ import time
 
 import telebot
 from nudenet import NudeDetector
+from token_bot import bot, mytoken
 
-BOT_TOKEN = "token here"
-bot = telebot.TeleBot(BOT_TOKEN)
 detector = NudeDetector()
 
 
@@ -65,18 +64,33 @@ def handle_mute(message):
 cnt_img = 0
 
 
-@bot.message_handler(content_types=['photo'])
+@bot.message_handler(content_types=['photo', 'document'])
 def handle_photo(message):
     global cnt_img
-    if message.content_type == 'photo':
-        cnt_img += 1
-        file_id = message.photo[-1].file_id
+    if message.content_type == 'photo' or 'document':
+        if message.content_type == 'photo':
+            file_id = message.photo[-1].file_id
+        elif message.content_type == 'document':
+            file_id = message.document.file_id
         file_info = bot.get_file(file_id)
         file_name = f'proverka_{cnt_img}.jpg'
         downloaded_file = bot.download_file(file_info.file_path)
         with open(file_name, 'wb') as img:
             img.write(downloaded_file)
         bot.send_message(message.chat.id, f"photo proverka_{cnt_img}.jpg saved successfully")
+        detected = detector.detect(f'proverka_{cnt_img}.jpg')
+        face_classes = ['FACE_FEMALE', 'FACE_MALE']
+        only_face_classes = all(detection["class"] in face_classes for detection in detected)
+        if not detected or only_face_classes:
+            bot.send_message(message.chat.id,
+                             "ура ура! фото приличное:)")
+        else:
+            bot.send_message(message.chat.id,
+                             "в вашем фото был обнаружен непристойный контент")
+            censored = detector.censor(f'proverka_{cnt_img}.jpg')
+            with open(censored, 'rb') as c:
+                bot.send_photo(message.chat.id, c)
+    cnt_img += 1
 
 
 bot.polling(none_stop=True)
