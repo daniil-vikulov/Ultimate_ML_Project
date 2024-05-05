@@ -1,0 +1,20 @@
+FROM ubuntu:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get upgrade
+
+RUN apt-get install -y wget
+
+RUN apt-get install -y wget
+RUN wget https://download.oracle.com/java/19/archive/jdk-19.0.2_linux-x64_bin.deb
+RUN apt-get -qqy install ./jdk-19.0.2_linux-x64_bin.deb
+RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-19/bin/java 1919
+RUN rm jdk-19.0.2_linux-x64_bin.deb
+
+COPY server.jar /home/root/server/server.jar
+
+RUN mkdir /home/root/server/logs/
+
+WORKDIR /home/root/server/
+CMD ["java", "-jar", "server.jar"]
