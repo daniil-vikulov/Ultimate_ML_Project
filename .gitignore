@@ -52,4 +52,3 @@ coverage.xml
 docs/_build/
 
 telegram-bot/token_bot.py
-/backend/src/uploads

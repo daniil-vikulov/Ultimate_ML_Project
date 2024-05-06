@@ -147,7 +147,15 @@ curl -X POST -F "file=@path_to_image.jpg" http://localhost:5000/classify
     - Request to detect objects in the image:
 curl -X POST -F "file=@path_to_image.jpg" http://localhost:5000/detect
 
-If you are in the folder "/uploads" , then just write the name of the uploaded file instead of "path_to_image"
+* If you are in the folder "/uploads" , then just write the name of the uploaded file instead of "path_to_image"
+
+    - Request to registrate user:
+curl -X POST http://localhost:5000/register -H "Content-Type: application/json" -d "{\"username\": \"new_user\"}"
+
+    - Request to login user:
+curl -X POST http://localhost:5000/login -H "Content-Type: application/json" -d "{\"username\": \"new_user\"}"
+
+* Enter the username instead of "new_user"
 """
 
 if __name__ == '__main__':
