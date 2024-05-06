@@ -102,9 +102,34 @@ def write_ans(call):
             bot.send_message(call.message.chat.id, "квак плак, не больно то надо")
 
 
-# @bot.message_handler(commands=['stats'])
-# def handle_stats(message):
-# todo
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    if message.chat.type == 'supergroup':
+        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        count = cursor.fetchone()[0]
+        nest_mute_min = 1
+        if count == 10:
+            bot.send_message(message.chat.id, f'За следующее неприличное фото в чате пользователь {message.from_user.first_name}'
+                                              f' {message.from_user.last_name} будет кикнут')
+        elif count >= 0 and count <= 2:
+            next_mute_min = 1
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минуту')
+        elif count >= 3 and count <= 6:
+            next_mute_min = 5
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минут')
+        elif count >= 7 and count <= 9:
+            next_mute_min = 60
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минут')
+        else:
+            print(f'error')
+    else:
+        bot.send_message(message.chat.id, f'невозможно узнать статистику')
 
 
 image_cnt = 0
@@ -127,12 +152,14 @@ def handle_photo(message):
         detected = detector.detect(f'image_{image_cnt}.jpg')
         face_classes = ['FACE_FEMALE', 'FACE_MALE']
         only_face_classes = all(detection["class"] in face_classes for detection in detected)
+        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        count = cursor.fetchone()[0]
         if message.chat.type == 'supergroup':
             if not detected or only_face_classes:
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
                 os.remove(file_name)
-            else:
+            else:  # nsfw content sent to a supergroup
                 try:
                     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     cursor.execute(
@@ -155,12 +182,19 @@ def handle_photo(message):
                     # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
                     user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
                     if user_role == 'administrator' or user_role == 'creator':
-                        bot.send_message(message.chat.id, "нельзя замутить администратора/создателя группы"
+                        bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
                                                           " за отправление "
                                                           "нецензурного контента:(")
                     else:
                         try:
                             mute_seconds = 60
+                            if count > 3:
+                                mute_seconds = 300
+                            if count > 7:
+                                mute_seconds = 3600
+                            if count > 10:
+                                bot.kick_chat_member(message.chat.id, message.from_user.id)
+                                return
                             mute_until = time.time() + mute_seconds
                             bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
                         except Exception as e:
