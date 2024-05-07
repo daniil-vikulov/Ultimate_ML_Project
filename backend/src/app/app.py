@@ -167,10 +167,18 @@ def detect_image(filepath):
         return jsonify({'error': str(e)}), 500
 
 
+def validate_username(username):
+    if not username or not username.strip():
+        logger.error("Username is required and cannot be empty.")
+        return False
+    return True
+
+
 def validate_request(request_data):
-    if not request_data or 'username' not in request_data:
-        logger.error("Request is missing or incomplete")
-        return jsonify({'error': 'Request is missing or incomplete'}), 400
+    if 'username' not in request_data:
+        return jsonify({'error': 'Username is required'}), 400
+    if not validate_username(request_data['username']):
+        return jsonify({'error': 'Username cannot be empty'}), 400
     return None
 
 
@@ -185,11 +193,7 @@ def register_user():
     if validation_error:
         return validation_error
 
-    username = request_data.get('username', '').strip()
-    if not username:
-        logger.error("Attempted to register with an empty username.")
-        return jsonify({'error': 'Username cannot be empty'}), 400
-
+    username = request_data['username'].strip()
     existing_user = User.query.filter_by(username=username).first()
 
     # Checking the presence of a user in the database
@@ -210,7 +214,7 @@ def register_user():
         return jsonify({'error': str(e)}), 500
 
 
-# TODO дописать тесты
+# TODO дописать тесты, переписать документацию для register и login
 @app.route('/login', methods=['POST'])
 def login_user():
     """
@@ -222,7 +226,7 @@ def login_user():
     if validation_error:
         return validation_error
 
-    username = request_data['username']
+    username = request_data['username'].strip()
     user = User.query.filter_by(username=username).first()
     if user:
         logger.info(f"Login successful for {username}")
