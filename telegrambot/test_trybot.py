@@ -5,7 +5,7 @@ from trybot import handle_start, handle_help, handle_mute, handle_kick, handle_t
     write_ans, next_img, colour
 
 
-@patch('trybot.bot')
+@patch('trybot.telegrambot')
 class TestTrybot(unittest.TestCase):
 
     def test_handle_start(self, mock_bot):  # test /start

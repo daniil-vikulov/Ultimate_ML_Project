@@ -6,8 +6,7 @@ import sqlite3
 import requests
 import telebot
 from nudenet.nudenet import NudeDetector
-from token_bot import bot, mytoken
-from censor import censor_colour
+from token_bot import bot
 
 detector = NudeDetector()
 server_url = 'http://127.0.0.1:5000'
@@ -269,7 +268,7 @@ def next_img(call):
             print(f'error {e}')
 
 
-# @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
+# @telegrambot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 # def colour(call):
 #     if call.message:
 #         file_name = call.data.split(':')[2]
@@ -290,7 +289,7 @@ def next_img(call):
 #         if chosen_colour == "violet":
 #             censored = censor_colour(file_name, "violet")
 #         with open(censored, 'rb') as c:
-#             bot.send_photo(call.message.chat.id, c)
+#             telegrambot.send_photo(call.message.chat.id, c)
 #         os.remove(censored)
 #         original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
 #         os.remove(original)
