@@ -13,7 +13,7 @@ class TestCensor(unittest.TestCase):
             if os.path.exists("test2_censored.jpg"):
                 os.remove("test2_censored.jpg")
             censored = detector.censor(image_path)
-            self.assertEqual(censored, "test6_censored.jpg")
+            self.assertEqual(censored, "test2_censored.jpg")
         except Exception as e:
             print(f'An error occurred. {e}')
 

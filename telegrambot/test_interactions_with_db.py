@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from trybot import handle_stats
 
 
-@patch('trybot.telegrambot')
+@patch('trybot.bot')
 @patch('trybot.cursor')
 class TestInteractionsWithDb(unittest.TestCase):
     def test_handle_stats(self, mock_cursor, mock_bot):

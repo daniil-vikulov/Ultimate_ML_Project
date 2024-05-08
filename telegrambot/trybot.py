@@ -268,7 +268,7 @@ def next_img(call):
             print(f'error {e}')
 
 
-# @telegrambot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
+# @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 # def colour(call):
 #     if call.message:
 #         file_name = call.data.split(':')[2]
@@ -289,7 +289,7 @@ def next_img(call):
 #         if chosen_colour == "violet":
 #             censored = censor_colour(file_name, "violet")
 #         with open(censored, 'rb') as c:
-#             telegrambot.send_photo(call.message.chat.id, c)
+#             bot.send_photo(call.message.chat.id, c)
 #         os.remove(censored)
 #         original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
 #         os.remove(original)
