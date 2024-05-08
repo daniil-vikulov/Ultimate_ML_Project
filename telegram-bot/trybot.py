@@ -28,7 +28,6 @@ def handle_start(message):
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Привет всем! Этот бот будет следить за порядком в чате\n'
                          f'Нельзя слать неприличные фото, а также непонятную рекламу, за это бан')
-        print(message.chat.id)
     else:
         bot.send_message(message.chat.id,
                          f'Привет, {message.from_user.first_name}! '
@@ -37,29 +36,30 @@ def handle_start(message):
 
 @bot.message_handler(commands=['help'])
 def handle_help(message):
-    if message.chat.id == 'supergroup':
-        bot.send_message(message.chat.id, f'Если надоел какой-то пользоваель, то можно замутить его командой /mute\n'
+    if message.chat.type == 'supergroup':
+        bot.send_message(message.chat.id, f'Если надоел какой-то пользователь, то можно замутить его командой /mute\n'
                                           f'Также можно кикнуть /kick '
                                           f'(просто ответьте на сообщение пользователя, который надоел)\n'
                                           f'Если хотите получить статистику нарушителей чата используйте /stats')
     else:
-        bot.send_message(message.chat.id, f"{message.from_user.first_name}!\n"
-                                          f"Для того, чтобы протестировать работу сервиса, "
-                                          f"воспользуйтесь командой /test или просто отправьте фото\n")
+        bot.send_message(message.chat.id, f'{message.from_user.first_name}!\n'
+                                          f'Для того, чтобы протестировать работу сервиса, '
+                                          f'воспользуйтесь командой /test или просто отправьте фото\n')
 
 
 @bot.message_handler(commands=['kick'])
 def handle_kick(message):
-    if message.chat.id == 'supergroup':
+    if message.chat.type == 'supergroup':
         if message.reply_to_message:
             try:
                 user_to_kick = message.reply_to_message.from_user.id
                 bot.kick_chat_member(message.chat.id, user_to_kick)
-                bot.send_message(message.chat.id, f"User {user_to_kick} has been kicked.")
+                bot.send_message(message.chat.id, f"Пользователь @{message.reply_to_message.from_user.username}"
+                                                  f" был кикнут")
             except Exception as e:
                 print(f'Ошибка {e}')
         else:
-            bot.send_message(message.chat.id, "Please reply to the user you want to kick.")
+            bot.send_message(message.chat.id, "Пожалуйста, ответьте на сообщение пользователя, которого надо кикнуть")
     else:
         bot.send_message(message.chat.id, 'К сожалению, такая команда доступна только в группах, для '
                                           'проверки фото воспользуйтесь /test')
@@ -67,18 +67,19 @@ def handle_kick(message):
 
 @bot.message_handler(commands=['mute'])
 def handle_mute(message):
-    if message.chat.id == 'supergroup':
+    if message.chat.type == 'supergroup':
         if message.reply_to_message:
             try:
                 user_to_mute = message.reply_to_message.from_user.id
                 mute_seconds = 60
                 mute_until = time.time() + mute_seconds
                 bot.restrict_chat_member(message.chat.id, user_to_mute, until_date=int(mute_until))
-                bot.send_message(message.chat.id, f"User {user_to_mute} has been muted for {mute_seconds} seconds.")
+                bot.send_message(message.chat.id, f"Пользователь @{message.reply_to_message.from_user.username}"
+                                                  f" замучен на {mute_seconds} секунд.")
             except Exception as e:
                 print(f'Ошибка {e}')
         else:
-            bot.send_message(message.chat.id, "Please reply to the user you want to mute.")
+            bot.send_message(message.chat.id, "Пожалуйста, ответьте на сообщение пользователя, которого надо замутить")
     else:
         bot.send_message(message.chat.id, 'К сожалению, такая команда доступна только в группах, для '
                                           'проверки фото воспользуйтесь /test')
@@ -102,9 +103,34 @@ def write_ans(call):
             bot.send_message(call.message.chat.id, "квак плак, не больно то надо")
 
 
-# @bot.message_handler(commands=['stats'])
-# def handle_stats(message):
-# todo
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    if message.chat.type == 'supergroup':
+        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        count = cursor.fetchone()[0]
+        nest_mute_min = 1
+        if count == 10:
+            bot.send_message(message.chat.id, f'За следующее неприличное фото в чате пользователь {message.from_user.first_name}'
+                                              f' {message.from_user.last_name} будет кикнут')
+        elif count >= 0 and count <= 2:
+            next_mute_min = 1
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минуту')
+        elif count >= 3 and count <= 6:
+            next_mute_min = 5
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минут')
+        elif count >= 7 and count <= 9:
+            next_mute_min = 60
+            bot.send_message(message.chat.id,
+                             f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
+                             f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минут')
+        else:
+            print(f'error')
+    else:
+        bot.send_message(message.chat.id, f'невозможно узнать статистику')
 
 
 image_cnt = 0
@@ -127,12 +153,14 @@ def handle_photo(message):
         detected = detector.detect(f'image_{image_cnt}.jpg')
         face_classes = ['FACE_FEMALE', 'FACE_MALE']
         only_face_classes = all(detection["class"] in face_classes for detection in detected)
+        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        count = cursor.fetchone()[0]
         if message.chat.type == 'supergroup':
             if not detected or only_face_classes:
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
                 os.remove(file_name)
-            else:
+            else:  # nsfw content sent to a supergroup
                 try:
                     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     cursor.execute(
@@ -155,12 +183,19 @@ def handle_photo(message):
                     # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
                     user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
                     if user_role == 'administrator' or user_role == 'creator':
-                        bot.send_message(message.chat.id, "нельзя замутить администратора/создателя группы"
+                        bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
                                                           " за отправление "
                                                           "нецензурного контента:(")
                     else:
                         try:
                             mute_seconds = 60
+                            if count > 3:
+                                mute_seconds = 300
+                            if count > 7:
+                                mute_seconds = 3600
+                            if count > 10:
+                                bot.kick_chat_member(message.chat.id, message.from_user.id)
+                                return
                             mute_until = time.time() + mute_seconds
                             bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
                         except Exception as e:
@@ -196,6 +231,20 @@ def handle_photo(message):
                                  "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
                                  reply_markup=keyboard)
             image_cnt += 1
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("next"))
+def next_img(call):
+    if call.message.chat.type == 'supergroup':
+        return
+    else:
+        try:
+            if call.message:
+                name = call.data.split(':')[1]
+                os.remove(name)
+                bot.send_message(call.message.chat.id, "отправьте следующее фото:)")
+        except Exception as e:
+            print(f'error {e}')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
