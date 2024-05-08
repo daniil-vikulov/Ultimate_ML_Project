@@ -1,6 +1,6 @@
 import cv2
 import os
-from nudenet import NudeDetector
+from nudenet.nudenet import NudeDetector
 from colours import colours
 
 
