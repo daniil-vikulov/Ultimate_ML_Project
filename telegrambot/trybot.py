@@ -5,11 +5,12 @@ import sqlite3
 
 import requests
 import telebot
-from nudenet import NudeDetector
+from nudenet.nudenet import NudeDetector
 from token_bot import bot, mytoken
 from censor import censor_colour
 
 detector = NudeDetector()
+server_url = 'http://127.0.0.1:5000'
 
 connection = sqlite3.connect("user_stats.db", check_same_thread=False)
 cursor = connection.cursor()
@@ -150,13 +151,21 @@ def handle_photo(message):
         with open(file_name, 'wb') as img:
             img.write(downloaded_file)
         bot.send_message(message.chat.id, f"photo image_{image_cnt}.jpg saved successfully")
-        detected = detector.detect(f'image_{image_cnt}.jpg')
+        url_detect = f'{server_url}/detect'
+        files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
+        response = requests.post(url_detect, files=files)
+        files['file'][1].close()
+        if response.status_code == 200:
+            result = response.json()
+            detected_parts = result['detected_parts']
+            # print(detected_parts)
+        # detected = detector.detect(f'image_{image_cnt}.jpg')
         face_classes = ['FACE_FEMALE', 'FACE_MALE']
-        only_face_classes = all(detection["class"] in face_classes for detection in detected)
+        only_face_classes = all(detection["class"] in face_classes for detection in detected_parts)
         cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
         count = cursor.fetchone()[0]
         if message.chat.type == 'supergroup':
-            if not detected or only_face_classes:
+            if not detected_parts or only_face_classes:
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
                 os.remove(file_name)
@@ -176,36 +185,49 @@ def handle_photo(message):
                                  f"в фото, отправленном участником {message.from_user.first_name} "
                                  f"{message.from_user.last_name},"
                                  f" был обнаружен непристойный контент. Фото было удалено, вот заблюренная версия:")
-                censored = detector.censor(f'image_{image_cnt}.jpg')
-                with open(censored, 'rb') as c:
-                    bot.delete_message(message.chat.id, message.id)
-                    bot.send_photo(message.chat.id, c)  # отправили заблюренное фото
-                    # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
-                    user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
-                    if user_role == 'administrator' or user_role == 'creator':
-                        bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
-                                                          " за отправление "
-                                                          "нецензурного контента:(")
+                url_censor = f'{server_url}/censor'
+                files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
+                response = requests.post(url_censor, files=files)
+                files['file'][1].close()
+                if response.status_code == 200:
+                    answer = response.json()
+                    censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
+                    if censored:
+                # censored = detector.censor(f'image_{image_cnt}.jpg')
+                        with open(censored, 'rb') as c:
+                            bot.delete_message(message.chat.id, message.id)
+                            bot.send_photo(message.chat.id, c)  # отправили заблюренное фото
+                            # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
+                            user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
+                            if user_role == 'administrator' or user_role == 'creator':
+                                bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
+                                                                  " за отправление "
+                                                                  "нецензурного контента:(")
+                            else:
+                                try:
+                                    mute_seconds = 60
+                                    if count > 3:
+                                        mute_seconds = 300
+                                    if count > 7:
+                                        mute_seconds = 3600
+                                    if count > 10:
+                                        bot.kick_chat_member(message.chat.id, message.from_user.id)
+                                        return
+                                    mute_until = time.time() + mute_seconds
+                                    bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
+                                except Exception as e:
+                                    print(f'Ошибка {e}')
+                        os.remove(censored)
+                        original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
+                        os.remove(original)
+                    # image_cnt += 1
                     else:
-                        try:
-                            mute_seconds = 60
-                            if count > 3:
-                                mute_seconds = 300
-                            if count > 7:
-                                mute_seconds = 3600
-                            if count > 10:
-                                bot.kick_chat_member(message.chat.id, message.from_user.id)
-                                return
-                            mute_until = time.time() + mute_seconds
-                            bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
-                        except Exception as e:
-                            print(f'Ошибка {e}')
-                os.remove(censored)
-                original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
-                os.remove(original)
-            image_cnt += 1
+                        bot.send_message(message.chat.id, "Заблюренное фото не найдено:(")
+                    image_cnt += 1
+                else:
+                    bot.send_message(message.chat.id, "Ошибка с блюром фотки:(")
         else:
-            if not detected or only_face_classes:
+            if not detected_parts or only_face_classes:
                 keyboard = telebot.types.InlineKeyboardMarkup()
                 keyboard.add(telebot.types.InlineKeyboardButton(text="дальше", callback_data=f"next:{file_name}"))
                 bot.send_message(message.chat.id,
@@ -247,31 +269,53 @@ def next_img(call):
             print(f'error {e}')
 
 
+# @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
+# def colour(call):
+#     if call.message:
+#         file_name = call.data.split(':')[2]
+#         chosen_colour = call.data.split(':')[1]
+#
+#         if chosen_colour == "black":
+#             censored = censor_colour(file_name, "black")
+#         if chosen_colour == "white":
+#             censored = censor_colour(file_name, "white")
+#         if chosen_colour == "blue":
+#             censored = censor_colour(file_name, "blue")
+#         if chosen_colour == "red":
+#             censored = censor_colour(file_name, "red")
+#         if chosen_colour == "green":
+#             censored = censor_colour(file_name, "green")
+#         if chosen_colour == "orange":
+#             censored = censor_colour(file_name, "orange")
+#         if chosen_colour == "violet":
+#             censored = censor_colour(file_name, "violet")
+#         with open(censored, 'rb') as c:
+#             bot.send_photo(call.message.chat.id, c)
+#         os.remove(censored)
+#         original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
+#         os.remove(original)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
     if call.message:
         file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]
-
-        if chosen_colour == "black":
-            censored = censor_colour(file_name, "black")
-        if chosen_colour == "white":
-            censored = censor_colour(file_name, "white")
-        if chosen_colour == "blue":
-            censored = censor_colour(file_name, "blue")
-        if chosen_colour == "red":
-            censored = censor_colour(file_name, "red")
-        if chosen_colour == "green":
-            censored = censor_colour(file_name, "green")
-        if chosen_colour == "orange":
-            censored = censor_colour(file_name, "orange")
-        if chosen_colour == "violet":
-            censored = censor_colour(file_name, "violet")
-        with open(censored, 'rb') as c:
-            bot.send_photo(call.message.chat.id, c)
-        os.remove(censored)
-        original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
-        os.remove(original)
+        url_censor_colour = f'{server_url}/censor_colour?colour={chosen_colour}'
+        files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
+        response = requests.post(url_censor_colour, files=files)
+        files['file'][1].close()
+        if response.status_code == 200:
+            try:
+                result = response.json()
+                censored = os.path.join('../backend/src/app', result.get('censored_image_path'))
+                if censored:
+                    with open(censored, 'rb') as c:
+                        bot.send_photo(call.message.chat.id, c)
+                else:
+                    print('Заблюренный файл не найден')
+            except Exception as e:
+                print(f'{e}')
 
 
 bot.polling(none_stop=True)

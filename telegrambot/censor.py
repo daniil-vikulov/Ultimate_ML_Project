@@ -1,7 +1,7 @@
 import cv2
 import os
-from nudenet import NudeDetector
-from colours import colours
+from nudenet.nudenet import NudeDetector
+from telegrambot.colours import colours
 
 
 def censor_colour(image_path, colour, classes=None, output_path=None):

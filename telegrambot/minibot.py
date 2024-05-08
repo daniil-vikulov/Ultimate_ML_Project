@@ -1,6 +1,7 @@
 import telebot
 from token_bot import bot, mytoken
-from nudenet import NudeDetector
+from nudenet.nudenet import NudeDetector
+
 
 image_cnt = 0
 detector = NudeDetector()
