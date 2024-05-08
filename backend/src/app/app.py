@@ -105,6 +105,11 @@ def process_image_file(filepath, action):
             return classify_image(filepath)
         elif action == 'detect':
             return detect_image(filepath)
+        elif action == 'censor_colour':
+            colour = request.args.get('colour')
+            if not colour:
+                return jsonify({'error': 'Missing colour parameter'}), 400
+            return censor_colour_image(filepath, colour=colour)
     except Exception as e:
         logger.exception("Error processing image")
         return jsonify({'error': str(e)}), 500
@@ -126,6 +131,19 @@ def censor_image(filepath):
         return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
     except Exception as e:
         logger.exception("Failed to censor image")
+        return jsonify({'error': str(e)}), 500
+
+
+def censor_colour_image(filepath, colour):
+    try:
+        base_name, extension = os.path.splitext(os.path.basename(filepath))
+        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored.jpg")
+        censor_colour(filepath, colour)
+        if os.path.exists(censored_filepath):
+            return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
+        else:
+            return jsonify({'error': 'Image censoring failed'}), 500
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
