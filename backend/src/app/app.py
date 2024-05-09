@@ -3,6 +3,8 @@ from nudenet import NudeClassifier
 import os
 import logging
 from nudenet.nudenet import NudeDetector
+
+from telegrambot.censor import censor_colour
 from user_data import data, User
 from PIL import Image
 from werkzeug.utils import secure_filename

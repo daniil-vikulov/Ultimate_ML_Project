@@ -64,3 +64,4 @@ The censored images will appear there too.
 
    **Return**: _Login successful_ if this username exists or _User not found_ if it doesn't exist
 
+# TODO добавить инструкцию 
