@@ -8,7 +8,8 @@ from trybot import handle_start, handle_help, handle_mute, handle_kick, handle_t
 @patch('trybot.bot')
 class TestTrybot(unittest.TestCase):
 
-    def test_handle_start(self, mock_bot):  # test /start
+    def test_handle_start(self, mock_bot):
+        """tests the work of /start command"""
         message = MagicMock()
         if message.chat.type == 'supergroup':
             try:
@@ -17,8 +18,7 @@ class TestTrybot(unittest.TestCase):
                 mock_bot.send_message.assert_called_once_with(12345,
                                                               f'Привет всем! Этот бот будет следить за порядком в чате\n'
                                                               f'Нельзя слать неприличные фото, '
-                                                              f'а также непонятную рекламу,'
-                                                              f' за это бан')
+                                                              f'за это бан')
             except Exception as e:
                 print(f'{e}')
         else:
@@ -29,7 +29,8 @@ class TestTrybot(unittest.TestCase):
                                                           f'Привет, Лиза! '
                                                           f'Проверь свое фото на наличие неприличного контента')
 
-    def test_handle_help(self, mock_bot):  # test /help for supergroup
+    def test_handle_help(self, mock_bot):
+        """tests the work of /help command"""
         message = MagicMock()
         if message.chat.type == 'supergroup':
             try:
@@ -60,6 +61,7 @@ class TestTrybot(unittest.TestCase):
                 print(f'{e}')
 
     def test_handle_test(self, mock_bot):
+        """tests the work of /test command"""
         message = MagicMock()
         if message.chat.type == 'supergroup':
             return
@@ -81,6 +83,7 @@ class TestTrybot(unittest.TestCase):
                 print(f'{e}')
 
     def test_write_ans(self, mock_bot):
+        """tests the work of write_ans function"""
         call = MagicMock()
         if call.chat.type == 'supergroup':
             return
@@ -103,6 +106,7 @@ class TestTrybot(unittest.TestCase):
                     print(f'{e}')
 
     def test_handle_mute(self, mock_bot):
+        """tests the work of /mute command"""
         message = MagicMock()
         if message.chat.type == 'supergroup':
             try:
@@ -139,6 +143,7 @@ class TestTrybot(unittest.TestCase):
                 print(f'{e}')
 
     def test_handle_kick(self, mock_bot):
+        """tests the work of /kick command"""
         message = MagicMock()
         if message.chat.type == 'supergroup':
             try:
@@ -171,6 +176,7 @@ class TestTrybot(unittest.TestCase):
                 print(f'{e}')
 
     def test_next_img(self, mock_bot):
+        """tests the work of next_img function"""
         call = MagicMock()
         if call.chat.type == 'supergroup':
             return

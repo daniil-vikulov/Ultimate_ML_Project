@@ -7,6 +7,7 @@ from trybot import handle_stats
 @patch('trybot.cursor')
 class TestInteractionsWithDb(unittest.TestCase):
     def test_handle_stats(self, mock_cursor, mock_bot):
+        """tests the work of /stats command"""
         test_cases = [
             {'count': 10,
              'chat_type': 'supergroup',

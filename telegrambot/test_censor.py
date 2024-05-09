@@ -7,6 +7,7 @@ import censor
 class TestCensor(unittest.TestCase):
 
     def test_censor(self):
+        """tests the work of censor(image_path) command in nudenet"""
         try:
             detector = NudeDetector()
             image_path = "test2.jpg"
@@ -18,6 +19,7 @@ class TestCensor(unittest.TestCase):
             print(f'An error occurred. {e}')
 
     def test_censor_colour(self):
+        """tests the work of censor_colour(image_path) command"""
         try:
             image_path = "test1.jpg"
             if os.path.exists("test1_censored.jpg"):

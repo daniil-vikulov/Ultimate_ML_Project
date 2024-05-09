@@ -9,6 +9,7 @@ from trybot import handle_photo, colour
 class TestOs(unittest.TestCase):
 
     def test_colour(self, mock_os, mock_censor_colour, mock_bot):
+        """tests the work of colour(call) function"""
         test_cases = [
             {'call_data': 'colour:black:test2.jpg',
              'expected_colour': 'black'},

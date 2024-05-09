@@ -25,9 +25,10 @@ date_time TEXT NOT NULL
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
+    """handles /start command sent in a supergroup or in a personal chat with bot"""
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Привет всем! Этот бот будет следить за порядком в чате\n'
-                         f'Нельзя слать неприличные фото, а также непонятную рекламу, за это бан')
+                         f'Нельзя слать неприличные фото, за это бан')
     else:
         bot.send_message(message.chat.id,
                          f'Привет, {message.from_user.first_name}! '
@@ -36,6 +37,7 @@ def handle_start(message):
 
 @bot.message_handler(commands=['help'])
 def handle_help(message):
+    """handles /help command sent in a supergroup or in a personal chat with bot"""
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Если надоел какой-то пользователь, то можно замутить его командой /mute\n'
                                           f'Также можно кикнуть /kick '
@@ -49,6 +51,7 @@ def handle_help(message):
 
 @bot.message_handler(commands=['kick'])
 def handle_kick(message):
+    """handles /kick command sent in a supergroup, this command can be used to kick users out of the group"""
     if message.chat.type == 'supergroup':
         if message.reply_to_message:
             try:
@@ -67,6 +70,7 @@ def handle_kick(message):
 
 @bot.message_handler(commands=['mute'])
 def handle_mute(message):
+    """handles /mute command sent in a supergroup, this command can be used to mute users in the group"""
     if message.chat.type == 'supergroup':
         if message.reply_to_message:
             try:
@@ -87,6 +91,8 @@ def handle_mute(message):
 
 @bot.message_handler(commands=['test'])
 def handle_test(user_message):
+    """handles /test command sent in a personal chat with bot,
+    this command is used to check photos for nsfw content"""
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.add(telebot.types.InlineKeyboardButton(text="да", callback_data="test.yes"))
     keyboard.add(telebot.types.InlineKeyboardButton(text="нет", callback_data="test.no"))
@@ -96,6 +102,7 @@ def handle_test(user_message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("test"))
 def write_ans(call):
+    """handles callback query of a command /test"""
     if call.message:
         if call.data == "test.yes":
             bot.send_message(call.message.chat.id, "отправьте фото на проверку:)))))))")
@@ -105,6 +112,8 @@ def write_ans(call):
 
 @bot.message_handler(commands=['stats'])
 def handle_stats(message):
+    """handles /stats command sent in a supergroup,
+    this command can be used to know how many nsfw photos user has already sent to a group"""
     if message.chat.type == 'supergroup':
         cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
         count = cursor.fetchone()[0]
@@ -138,6 +147,9 @@ image_cnt = 0
 
 @bot.message_handler(content_types=['photo', 'document'])
 def handle_photo(message):
+    """handles sending photos to a supergroup, or a personal chat with bot,
+    in case of a supergroup, bot deletes sensitive content and sends blurred version, also mutes the user
+    in case of a personal chat, bot tells the user^ that nsfw content was detected"""
     global image_cnt
     if message.content_type == 'photo' or 'document':
         if message.content_type == 'photo':
@@ -256,6 +268,7 @@ def handle_photo(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("next"))
 def next_img(call):
+    """handles next photo"""
     if call.message.chat.type == 'supergroup':
         return
     else:
@@ -297,6 +310,7 @@ def next_img(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
+    """handles user's choice of colour to blur the picture (for personal chats)"""
     if call.message:
         file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]
