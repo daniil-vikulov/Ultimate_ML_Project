@@ -11,7 +11,7 @@ Comprehensive and easy-to-use solution for content filtering
 1) Run file `backend/src/app/app.py` -- you are now running the server
 2) Now run file `telegrambot/trybot.py` -- you now have your bot running
 
-Use it at the link [nude detect bot](https://t.me/nuddetectbot)
+Use it at the link [detect bot](https://t.me/nuddetectbot)
 
 Telegram bot may be added to groups (give it admin rights to work well), or you can message the bot (private chat). 
 Use `/help` command to find out about all functionalities of a bot.
