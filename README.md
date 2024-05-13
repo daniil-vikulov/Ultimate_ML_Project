@@ -28,7 +28,7 @@ Our project also offers solutions for Windows - “BabyGuard” application.
 It provides wide functionality of monitoring and analyzing displayed content and optional censoring.
 You can install the client program for Windows 10/11 via our own setup tool.
 
-Note that application in active development stage.
+Note that application is in active development stage.
 
 <b><ins>Future updates:</b></ins>
 
