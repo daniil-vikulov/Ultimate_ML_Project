@@ -234,7 +234,6 @@ def register_user():
         return jsonify({'error': str(e)}), 500
 
 
-# TODO дописать тесты, переписать документацию для register и login
 @app.route('/login', methods=['POST'])
 def login_user():
     """
