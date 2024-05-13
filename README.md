@@ -1,6 +1,17 @@
 # Ultimate ML Project
 ML-content filter 
+
 It can be used to check if an image is appropriate or not
+
+Telegram bot:
+
+1) Run file `backend/src/app/app.py` -- you are now running the server
+2) Now run file `telegrambot/trybot.py` -- you now have your bot running
+
+Telegram bot may be added to groups (give it admin rights to work well), or you can message the bot (private chat). 
+Use `/help` command to find out about all functionalities of a bot.
+
+In groups bot can ban users who send inappropriate content, also you can use `/mute` or `/kick` commands to do it yourself
 
 The final product may be: a service with an open API for integration into third-party products.
 Demo version in browser https://lizagrin.github.io/Detector_site/

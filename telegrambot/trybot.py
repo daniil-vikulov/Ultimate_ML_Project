@@ -11,10 +11,10 @@ from token_bot import bot
 detector = NudeDetector()
 server_url = 'http://127.0.0.1:5000'
 
-connection = sqlite3.connect("user_stats.db", check_same_thread=False)
+connection = sqlite3.connect("user_statistics.db", check_same_thread=False)
 cursor = connection.cursor()
-# cursor.execute("drop table if exists nsfw_stats")
-cursor.execute("""CREATE TABLE if NOT EXISTS nsfw_stats(
+# cursor.execute("drop table if exists nsfw_content_sent")
+cursor.execute("""CREATE TABLE if NOT EXISTS nsfw_content_sent(
 user_id INTEGER NOT NULL,
 user_name TEXT NOT NULL,
 first_name TEXT NOT NULL,
@@ -115,8 +115,9 @@ def handle_stats(message):
     """handles /stats command sent in a supergroup,
     this command can be used to know how many nsfw photos user has already sent to a group"""
     if message.chat.type == 'supergroup':
-        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        cursor.execute("SELECT COUNT(*) FROM nsfw_content_sent WHERE user_id = ?", (message.from_user.id,))
         count = cursor.fetchone()[0]
+        connection.commit()
         nest_mute_min = 1
         if count == 10:
             bot.send_message(message.chat.id, f'За следующее неприличное фото в чате пользователь {message.from_user.first_name}'
@@ -161,7 +162,7 @@ def handle_photo(message):
         downloaded_file = bot.download_file(file_info.file_path)
         with open(file_name, 'wb') as img:
             img.write(downloaded_file)
-        bot.send_message(message.chat.id, f"photo image_{image_cnt}.jpg saved successfully")
+        # bot.send_message(message.chat.id, f"photo image_{image_cnt}.jpg saved successfully")
         url_detect = f'{server_url}/detect'
         files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
         response = requests.post(url_detect, files=files)
@@ -173,8 +174,9 @@ def handle_photo(message):
         # detected = detector.detect(f'image_{image_cnt}.jpg')
         face_classes = ['FACE_FEMALE', 'FACE_MALE']
         only_face_classes = all(detection["class"] in face_classes for detection in detected_parts)
-        cursor.execute("SELECT COUNT(*) FROM nsfw_stats WHERE user_id = ?", (message.from_user.id,))
+        cursor.execute("SELECT COUNT(*) FROM nsfw_content_sent WHERE user_id = ?", (message.from_user.id,))
         count = cursor.fetchone()[0]
+        connection.commit()
         if message.chat.type == 'supergroup':
             if not detected_parts or only_face_classes:
                 bot.send_message(message.chat.id,
@@ -184,7 +186,7 @@ def handle_photo(message):
                 try:
                     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     cursor.execute(
-                        "insert into nsfw_stats (user_id, user_name, first_name, last_name, date_time) "
+                        "insert into nsfw_content_sent (user_id, user_name, first_name, last_name, date_time) "
                         "values (?, ?, ?, ?, ?)",
                         (message.from_user.id, message.from_user.username,
                          message.from_user.first_name, message.from_user.last_name, current_time))
