@@ -4,19 +4,18 @@ import os
 from PIL import Image
 from flask import Flask, request, jsonify
 from nudenet.classifier import Classifier as NudeClassifier
-
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
-from user_data import data, User
-import sys
+
+import data_create
+import database
+from censor import censor_colour
 
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # project_root = os.path.join(current_dir, '../../../')
 #
 # # Добавление корневой директории в sys.path
 # sys.path.append(project_root)
-
-from censor import censor_colour
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,10 +25,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login'}
+ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-data.init_app(app)
+data_create.init_app(app)
 
 classifier = NudeClassifier()
 detector = NudeDetector()
@@ -51,11 +50,30 @@ def file_is_image(filepath):
 
 @app.route('/<action>', methods=['POST'])
 def upload_file(action):
+    """
+    Handles file upload to the server for a specified action.
+    :param: action (str): The action to be performed with the uploaded file.
+    Must be one of the allowed actions specified in ALLOWED_ACTIONS.
+
+    :return: Flask Response: Returns a JSON response with the processing result or an error.
+
+    :errors: 400: Returned if the specified action is not supported, no file is provided, a file with no name is selected,
+     the file type is not allowed, or the uploaded file is not a valid image.
+    """
     if action not in ALLOWED_ACTIONS:
         logger.error("Invalid action")
         return jsonify({'error': 'Invalid action'}), 400
 
-    # Check if there's a file part in the request
+    if action == 'register':
+        return database.register_user()
+
+    if action == 'stats':
+        return database.get_stats()
+
+    if action == 'login':
+        return database.login_user()
+
+        # Check if there's a file part in the request
     if 'file' not in request.files:
         logger.error("No file part in request")
         return jsonify({'error': 'No file part'}), 400
@@ -85,6 +103,20 @@ def upload_file(action):
 
 
 def process_image_file(filepath, action):
+    """
+    Processes an image file based on the specified action.
+    :param: filepath (str): The path to the image file that needs to be processed.
+        action (str): The type of processing to be performed on the image. Supported actions include 'censor',
+         'classify', and 'detect'.
+
+    :return: Depending on the action:
+        - For 'censor': Returns the result of censoring sensitive content in the image.
+        - For 'classify': Returns the classification results of the image.
+        - For 'detect': Returns the detection results from the image.
+
+        If an exception occurs during processing, it returns a JSON response with an error message
+        and a status code of 500.
+    """
     try:
         if action == 'censor':
             return censor_image(filepath)
@@ -103,6 +135,12 @@ def process_image_file(filepath, action):
 
 
 def censor_image(filepath):
+    """
+    Censors nudity in an image and saves the censored image.
+    :param filepath: Path to the image to be censored.
+    :return: JSON response with a message, path to the censored image, save censored image named
+    '{base_name}_censored.jpg' into folder /backend/src/uploads
+    """
     logger.info(f"Censoring image at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
@@ -129,6 +167,11 @@ def censor_colour_image(filepath, colour):
 
 
 def classify_image(filepath):
+    """
+    Classifies an image for nudity content.
+    :param filepath: Path to the image to be classified.
+    :return: JSON response with classification scores for 'safe' and 'unsafe'.
+    """
     logger.info(f"Classifying image at {filepath}")
     try:
         nudity_score = classifier.classify(filepath)
@@ -144,6 +187,11 @@ def classify_image(filepath):
 
 
 def detect_image(filepath):
+    """
+    Detects nudity in an image and returns parts detected.
+    :param filepath: Path to the image where detection is performed.
+    :return: JSON response with detected parts and their scores.
+    """
     logger.info(f"Detecting nudity in image at {filepath}")
     try:
         detected_parts = detector.detect(filepath)
@@ -156,64 +204,72 @@ def detect_image(filepath):
         return jsonify({'error': str(e)}), 500
 
 
-def validate_username(username):
-    if not username or not username.strip():
-        logger.error("Username is required and cannot be empty.")
-        return False
-    return True
-
-
-def validate_request(request_data):
-    if 'username' not in request_data:
-        return jsonify({'error': 'Username is required'}), 400
-    if not validate_username(request_data['username']):
-        return jsonify({'error': 'Username cannot be empty'}), 400
-    return None
-
-
-@app.route('/register', methods=['POST'])
-def register_user():
-    request_data = request.get_json()
-    validation_error = validate_request(request_data)
-    if validation_error:
-        return validation_error
-
-    username = request_data['username'].strip()
-    existing_user = User.query.filter_by(username=username).first()
-
-    # Checking the presence of a user in the database
-    if existing_user:
-        logger.error(f"Username {username} already exists.")
-        return jsonify({'error': 'Username already exists'}), 409
-
-    # If there is no username, add it to the database
-    try:
-        new_user = User(username=username)
-        data.session.add(new_user)
-        data.session.commit()
-        logger.info(f"User {username} registered successfully.")
-        return jsonify({'message': 'User registered successfully'}), 201
-    except Exception as e:
-        data.session.rollback()
-        logger.exception("Failed to register user due to unexpected error")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/login', methods=['POST'])
-def login_user():
-    request_data = request.get_json()
-    validation_error = validate_request(request_data)
-    if validation_error:
-        return validation_error
-
-    username = request_data['username'].strip()
-    user = User.query.filter_by(username=username).first()
-    if user:
-        logger.info(f"Login successful for {username}")
-        return jsonify({'message': 'Login successful'}), 200
-
-    logger.error(f"User {username} not found")
-    return jsonify({'error': 'User not found'}), 404
+# def validate_username(username):
+#     if not username or not username.strip():
+#         logger.error("Username is required and cannot be empty.")
+#         return False
+#     return True
+#
+#
+# def validate_request(request_data):
+#     if 'username' not in request_data:
+#         return jsonify({'error': 'Username is required'}), 400
+#     if not validate_username(request_data['username']):
+#         return jsonify({'error': 'Username cannot be empty'}), 400
+#     return None
+#
+#
+# @app.route('/register', methods=['POST'])
+# def register_user():
+#     """
+#     Registers a new user with a unique username.
+#     :return: JSON response indicating success or failure of user registration.
+#     """
+#     request_data = request.get_json()
+#     validation_error = validate_request(request_data)
+#     if validation_error:
+#         return validation_error
+#
+#     username = request_data['username'].strip()
+#     existing_user = User.query.filter_by(username=username).first()
+#
+#     # Checking the presence of a user in the database
+#     if existing_user:
+#         logger.error(f"Username {username} already exists.")
+#         return jsonify({'error': 'Username already exists'}), 409
+#
+#     # If there is no username, add it to the database
+#     try:
+#         new_user = User(username=username)
+#         data.session.add(new_user)
+#         data.session.commit()
+#         logger.info(f"User {username} registered successfully.")
+#         return jsonify({'message': 'User registered successfully'}), 201
+#     except Exception as e:
+#         data.session.rollback()
+#         logger.exception("Failed to register user due to unexpected error")
+#         return jsonify({'error': str(e)}), 500
+#
+#
+# @app.route('/login', methods=['POST'])
+# def login_user():
+#     """
+#     Logs in a user by username.
+#     :return: JSON response indicating whether the login was successful or not.
+#     """
+#     request_data = request.get_json()
+#     validation_error = validate_request(request_data)
+#     if validation_error:
+#         return validation_error
+#
+#     username = request_data['username'].strip()
+#     user = User.query.filter_by(username=username).first()
+#     if user:
+#         logger.info(f"Login successful for {username}")
+#         return jsonify({'message': 'Login successful'}), 200
+#
+#     logger.error(f"User {username} not found")
+#     return jsonify({'error': 'User not found'}), 404
 
 
 if __name__ == '__main__':
