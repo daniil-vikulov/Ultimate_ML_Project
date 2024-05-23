@@ -7,9 +7,12 @@ import requests
 import telebot
 from nudenet.nudenet import NudeDetector
 from token_bot import bot
+import time
 
+# Добавьте задержку перед подключением
+time.sleep(10)
 detector = NudeDetector()
-server_url = 'http://127.0.0.1:5000'
+server_url = 'http://server:5000'
 
 connection = sqlite3.connect("user_statistics.db", check_same_thread=False)
 cursor = connection.cursor()

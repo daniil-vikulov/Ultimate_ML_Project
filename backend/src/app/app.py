@@ -1,13 +1,22 @@
-from flask import Flask, request, jsonify
-from nudenet import NudeClassifier
-import os
 import logging
-from nudenet.nudenet import NudeDetector
+import os
 
-from telegrambot.censor import censor_colour
-from user_data import data, User
 from PIL import Image
+from flask import Flask, request, jsonify
+from nudenet.classifier import Classifier as NudeClassifier
+
+from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
+from user_data import data, User
+import sys
+
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# project_root = os.path.join(current_dir, '../../../')
+#
+# # Добавление корневой директории в sys.path
+# sys.path.append(project_root)
+
+from censor import censor_colour
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,16 +51,6 @@ def file_is_image(filepath):
 
 @app.route('/<action>', methods=['POST'])
 def upload_file(action):
-    """
-    Handles file upload to the server for a specified action.
-    :param: action (str): The action to be performed with the uploaded file.
-    Must be one of the allowed actions specified in ALLOWED_ACTIONS.
-
-    :return: Flask Response: Returns a JSON response with the processing result or an error.
-
-    :errors: 400: Returned if the specified action is not supported, no file is provided, a file with no name is selected,
-     the file type is not allowed, or the uploaded file is not a valid image.
-    """
     if action not in ALLOWED_ACTIONS:
         logger.error("Invalid action")
         return jsonify({'error': 'Invalid action'}), 400
@@ -86,20 +85,6 @@ def upload_file(action):
 
 
 def process_image_file(filepath, action):
-    """
-    Processes an image file based on the specified action.
-    :param: filepath (str): The path to the image file that needs to be processed.
-        action (str): The type of processing to be performed on the image. Supported actions include 'censor',
-         'classify', and 'detect'.
-
-    :return: Depending on the action:
-        - For 'censor': Returns the result of censoring sensitive content in the image.
-        - For 'classify': Returns the classification results of the image.
-        - For 'detect': Returns the detection results from the image.
-
-        If an exception occurs during processing, it returns a JSON response with an error message
-        and a status code of 500.
-    """
     try:
         if action == 'censor':
             return censor_image(filepath)
@@ -118,12 +103,6 @@ def process_image_file(filepath, action):
 
 
 def censor_image(filepath):
-    """
-    Censors nudity in an image and saves the censored image.
-    :param filepath: Path to the image to be censored.
-    :return: JSON response with a message, path to the censored image, save censored image named
-    '{base_name}_censored.jpg' into folder /backend/src/uploads
-    """
     logger.info(f"Censoring image at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
@@ -150,11 +129,6 @@ def censor_colour_image(filepath, colour):
 
 
 def classify_image(filepath):
-    """
-    Classifies an image for nudity content.
-    :param filepath: Path to the image to be classified.
-    :return: JSON response with classification scores for 'safe' and 'unsafe'.
-    """
     logger.info(f"Classifying image at {filepath}")
     try:
         nudity_score = classifier.classify(filepath)
@@ -170,11 +144,6 @@ def classify_image(filepath):
 
 
 def detect_image(filepath):
-    """
-    Detects nudity in an image and returns parts detected.
-    :param filepath: Path to the image where detection is performed.
-    :return: JSON response with detected parts and their scores.
-    """
     logger.info(f"Detecting nudity in image at {filepath}")
     try:
         detected_parts = detector.detect(filepath)
@@ -204,10 +173,6 @@ def validate_request(request_data):
 
 @app.route('/register', methods=['POST'])
 def register_user():
-    """
-    Registers a new user with a unique username.
-    :return: JSON response indicating success or failure of user registration.
-    """
     request_data = request.get_json()
     validation_error = validate_request(request_data)
     if validation_error:
@@ -236,10 +201,6 @@ def register_user():
 
 @app.route('/login', methods=['POST'])
 def login_user():
-    """
-    Logs in a user by username.
-    :return: JSON response indicating whether the login was successful or not.
-    """
     request_data = request.get_json()
     validation_error = validate_request(request_data)
     if validation_error:

@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./backend/src/app
+    ports:
+      - "5000:5000"  # Настройте порт, если ваш сервер работает на другом порту
+    environment:
+      - FLASK_ENV=production
+
+  bot:
+    build:
+      context: ./telegrambot
+    depends_on:
+      - server
+    environment:
+      - TELEGRAM_API_KEY=6785016047:AAHWxLLs1KzFHo47vlRMkSrpbOeOpMt2LPw # Установите ваш API ключ здесь
+      - SERVER_URL= http://127.0.0.1:5000  # URL вашего сервера в Docker-сети
