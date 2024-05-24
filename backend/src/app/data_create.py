@@ -21,4 +21,6 @@ def check_and_create_db(app):
         db.create_all()
         logger.info("Database created")
     else:
+        # os.remove(db_path)
+        # db.create_all()
         logger.info("Database already exists")

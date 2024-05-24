@@ -9,7 +9,10 @@ from werkzeug.utils import secure_filename
 
 import data_create
 import database
-from censor import censor_colour
+from telegrambot.censor import censor_colour
+from database import User, create_group_id_tables
+from data_create import db
+from datetime import datetime
 
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # project_root = os.path.join(current_dir, '../../../')
@@ -270,6 +273,126 @@ def detect_image(filepath):
 #
 #     logger.error(f"User {username} not found")
 #     return jsonify({'error': 'User not found'}), 404
+
+
+@app.route('/add_user', methods=['POST'])
+def add_user():
+    data = request.get_json()
+    new_message = User(
+        user_id=data['user_id'],
+        username=data['username'],
+        group_id=data['group_id']
+    )
+    db.session.add(new_message)
+    db.session.commit()
+    return 'added successfully', 201
+
+
+@app.route('/stats/<user_id>')
+def stats(user_id):
+    message_count = User.query.filter_by(user_id=user_id).count()
+    return jsonify({'messages': message_count})
+
+
+@app.route('/add_photo', methods=['POST'])
+def add_photo():
+    data = request.get_json()
+    user_id = data['user_id']
+    username = data['username']
+    group_id = data['group_id']
+    # photo_data = data.get('photo_data')
+    create_group_id_tables(group_id)
+    is_nsfw = False  # TODO
+    if is_nsfw:
+        nsfw_photo = 1
+    else:
+        nsfw_photo = 0
+
+    photo_table_name = f'group_{group_id}_photos'
+    Photo = type('Photo', (db.Model,), {'__tablename__': photo_table_name,
+                                        'id': db.Column(db.Integer, primary_key=True,
+                                                        autoincrement=True),
+                                        'user_id': db.Column(db.Integer, nullable=False),
+                                        'username': db.Column(db.String(80), nullable=False),
+                                        'group_id': db.Column(db.Integer, nullable=False),
+                                        'nsfw_photo': db.Column(db.Integer, nullable=False,
+                                                                default=0),
+                                        'timestamp': db.Column(db.DateTime, nullable=False,
+                                                               default=datetime.utcnow)})
+    new_photo = Photo(user_id=user_id, username=username, group_id=group_id, nsfw_photo=nsfw_photo)
+    db.session.add(new_photo)
+
+    stats_table_name = f'group_{group_id}_user_stats'
+    UserStats = type('UserStats', (db.Model,), {'__tablename__': stats_table_name,
+                                                'id': db.Column(db.Integer, primary_key=True,
+                                                                autoincrement=True),
+                                                'user_id': db.Column(db.Integer, nullable=False),
+                                                'group_id': db.Column(db.Integer, nullable=False),
+                                                'count_safe_photos_sent': db.Column(db.Integer,
+                                                                                    nullable=False,
+                                                                                    default=0),
+                                                'count_nsfw_photos_sent': db.Column(db.Integer,
+                                                                                    nullable=False,
+                                                                                    default=0),
+                                                'count_messages_sent': db.Column(db.Integer,
+                                                                                 nullable=False,
+                                                                                 default=0)})
+    user_stats = UserStats.query.filter_by(user_id=user_id, group_id=group_id).first()
+    if user_stats:
+        if is_nsfw:
+            user_stats.count_nsfw_photos_sent += 1
+        else:
+            user_stats.count_safe_photos_sent += 1
+    else:
+        if is_nsfw:
+            user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=0,
+                                   count_safe_photos_sent=0, count_nsfw_photos_sent=1)
+        else:
+            user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=0,
+                                   count_safe_photos_sent=1, count_nsfw_photos_sent=0)
+    db.session.add(user_stats)
+    db.session.commit()
+
+    return 'Photo added', 201
+
+
+@app.route('/add_message', methods=['POST'])
+def add_message():
+    data = request.get_json()
+    user_id = data['user_id']
+    username = data['username']
+    group_id = data['group_id']
+    message = data['message']
+
+    # Create tables if they don't exist (when first message from user is sent to a group)
+    create_group_id_tables(group_id)
+    stats_table_name = f'group_{group_id}_user_stats'
+    UserStats = type('UserStats', (db.Model,), {'__tablename__': stats_table_name,
+                                                'id': db.Column(db.Integer, primary_key=True,
+                                                                autoincrement=True),
+                                                'user_id': db.Column(db.Integer, nullable=False),
+                                                'group_id': db.Column(db.Integer, nullable=False),
+                                                'count_safe_photos_sent': db.Column(db.Integer,
+                                                                                    nullable=False,
+                                                                                    default=0),
+                                                'count_nsfw_photos_sent': db.Column(db.Integer,
+                                                                                    nullable=False,
+                                                                                    default=0),
+                                                'count_messages_sent': db.Column(db.Integer,
+                                                                                 nullable=False,
+                                                                                 default=0)})
+
+    user_stats = UserStats.query.filter_by(user_id=user_id, group_id=group_id).first()
+    if user_stats:
+        user_stats.count_messages_sent += 1
+    else:
+        user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=1,
+                               count_safe_photos_sent=0, count_nsfw_photos_sent=0)
+
+    db.session.add(user_stats)
+    db.session.commit()
+
+    return 'Message added', 201
 
 
 if __name__ == '__main__':
