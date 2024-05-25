@@ -281,7 +281,7 @@ def detect_image(filepath):
 @app.route('/message', methods=['POST'])
 def log_message():
     data = request.get_json()
-
+    username = data.get('username')
     user_id = data.get('user_id')
     group_id = data.get('group_id')
     message = data.get('message')
@@ -292,24 +292,26 @@ def log_message():
         # Добавляем пользователя в общую таблицу
         user = User.query.get(user_id)
         if not user:
-            user = User(user_id=user_id)
+            user = User(user_id=user_id, group_id=group_id, username=username)
             db.session.add(user)
             db.session.commit()
 
         # Обновляем статистику пользователя в группе
         group_stats = GroupStats.query.filter_by(
             user_id=user_id,
-            group_id=group_id
+            group_id=group_id,
+            username=username
         ).first()
+        # Ошибка при сохранении данных: unsupported operand type(s) for +=: 'NoneType' and 'int' TODO fix
         if not group_stats:
-            group_stats = GroupStats(user_id=user_id, group_id=group_id)
+            group_stats = GroupStats(user_id=user_id, group_id=group_id, username=username)
             db.session.add(group_stats)
         if is_text:
-            group_stats.count_test_messages_sent += 1
+            group_stats.count_test_messages_sent += 1  # error here
         if is_nsfw:
-            group_stats.count_nsfw_photos_sent += 1
+            group_stats.count_nsfw_photos_sent += 1  # error here
         else:
-            group_stats.count_safe_photos_sent += 1
+            group_stats.count_safe_photos_sent += 1  # error here
 
         db.session.commit()
 
@@ -317,11 +319,13 @@ def log_message():
         message_log = MessageLog(
             user_id=user_id,
             group_id=group_id,
+            username=username,
             message=message,
             is_text=is_text,
             is_nsfw=is_nsfw
         )
         db.session.add(message_log)
+        # db.session.add(group_stats)
         db.session.commit()
 
         return jsonify({'message': 'Данные сохранены'}), 201
