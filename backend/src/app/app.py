@@ -294,7 +294,7 @@ def log_message():
         if not user:
             user = User(user_id=user_id, group_id=group_id, username=username)
             db.session.add(user)
-            db.session.commit()
+            # db.session.commit()
 
         # Обновляем статистику пользователя в группе
         group_stats = GroupStats.query.filter_by(
@@ -302,16 +302,16 @@ def log_message():
             group_id=group_id,
             username=username
         ).first()
-        # Ошибка при сохранении данных: unsupported operand type(s) for +=: 'NoneType' and 'int' TODO fix
         if not group_stats:
             group_stats = GroupStats(user_id=user_id, group_id=group_id, username=username)
             db.session.add(group_stats)
+            db.session.commit()
         if is_text:
-            group_stats.count_test_messages_sent += 1  # error here
+            group_stats.count_test_messages_sent += 1
         if is_nsfw:
-            group_stats.count_nsfw_photos_sent += 1  # error here
+            group_stats.count_nsfw_photos_sent += 1
         else:
-            group_stats.count_safe_photos_sent += 1  # error here
+            group_stats.count_safe_photos_sent += 1
 
         db.session.commit()
 

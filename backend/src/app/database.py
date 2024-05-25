@@ -42,9 +42,10 @@ class GroupStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     group_id = db.Column(db.Integer, nullable=False)
-    count_test_messages_sent = db.Column(db.Integer, default=0)
-    count_safe_photos_sent = db.Column(db.Integer, default=0)
-    count_nsfw_photos_sent = db.Column(db.Integer, default=0)
+    count_test_messages_sent = db.Column(db.Integer, default=0, nullable=False)
+    count_safe_photos_sent = db.Column(db.Integer, default=0, nullable=False)
+    count_nsfw_photos_sent = db.Column(db.Integer, default=0, nullable=False)
+    username = db.Column(db.Text, nullable=False)
 
     user = db.relationship('User', backref=db.backref('group_stats', lazy=True))
 
@@ -63,6 +64,7 @@ class MessageLog(db.Model):
     is_text = db.Column(db.Boolean, default=False)
     is_nsfw = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    username = db.Column(db.Text, nullable=False)
 
     user = db.relationship('User', backref=db.backref('message_logs', lazy=True))
 
