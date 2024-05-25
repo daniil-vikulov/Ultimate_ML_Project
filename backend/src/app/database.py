@@ -9,34 +9,68 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_group_id_tables(group_id):
-    # Table for photos sent with timestamp to know when a photo is sent
-    photo_table_name = f'group_{group_id}_photos_sent'
-    if not db.engine.has_table(photo_table_name):
-        class Photo(db.Model):
-            __tablename__ = photo_table_name
-            id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-            user_id = db.Column(db.Integer, nullable=False)
-            username = db.Column(db.String(80), nullable=False)
-            group_id = db.Column(db.Integer, nullable=False)
-            nsfw_photo = db.Column(db.Integer, nullable=False, default=0)  # 0 safe, 1 not safe
-            timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+# def create_group_id_tables(group_id):
+#     # Table for photos sent with timestamp to know when a photo is sent
+#     photo_table_name = f'group_{group_id}_photos_sent'
+#     if not db.engine.has_table(photo_table_name):
+#         class Photo(db.Model):
+#             __tablename__ = photo_table_name
+#             id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+#             user_id = db.Column(db.Integer, nullable=False)
+#             username = db.Column(db.String(80), nullable=False)
+#             group_id = db.Column(db.Integer, nullable=False)
+#             nsfw_photo = db.Column(db.Integer, nullable=False, default=0)  # 0 safe, 1 not safe
+#             timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+#
+#         db.create_all()
+#
+#     # Table for user statistics
+#     stats_table_name = f'group_{group_id}_user_stats'
+#     if not db.engine.has_table(stats_table_name):
+#         class UserStats(db.Model):
+#             __tablename__ = stats_table_name
+#             id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+#             user_id = db.Column(db.Integer, nullable=False)
+#             group_id = db.Column(db.Integer, nullable=False)
+#             count_safe_photos_sent = db.Column(db.Integer, nullable=False, default=0)
+#             count_nsfw_photos_sent = db.Column(db.Integer, nullable=False, default=0)
+#             count_messages_sent = db.Column(db.Integer, nullable=False, default=0)
+#
+#         db.create_all()
 
-        db.create_all()
+class GroupStats(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    group_id = db.Column(db.Integer, nullable=False)
+    count_test_messages_sent = db.Column(db.Integer, default=0)
+    count_safe_photos_sent = db.Column(db.Integer, default=0)
+    count_nsfw_photos_sent = db.Column(db.Integer, default=0)
 
-    # Table for user statistics
-    stats_table_name = f'group_{group_id}_user_stats'
-    if not db.engine.has_table(stats_table_name):
-        class UserStats(db.Model):
-            __tablename__ = stats_table_name
-            id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-            user_id = db.Column(db.Integer, nullable=False)
-            group_id = db.Column(db.Integer, nullable=False)
-            count_safe_photos_sent = db.Column(db.Integer, nullable=False, default=0)
-            count_nsfw_photos_sent = db.Column(db.Integer, nullable=False, default=0)
-            count_messages_sent = db.Column(db.Integer, nullable=False, default=0)
+    user = db.relationship('User', backref=db.backref('group_stats', lazy=True))
 
-        db.create_all()
+    # def __repr__(self):
+    #     return f'<GroupStats {self.user_id} in group {self.group_id}>'
+
+
+# db.create_all()
+
+
+class MessageLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    group_id = db.Column(db.Integer, nullable=False)
+    message = db.Column(db.Text)
+    is_text = db.Column(db.Boolean, default=False)
+    is_nsfw = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('message_logs', lazy=True))
+
+    # def __repr__(self):
+    #     return f'<MessageLog {self.id}>'
+
+
+# db.create_all()
 
 
 class User(db.Model):

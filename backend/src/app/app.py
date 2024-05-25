@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 import data_create
 import database
 from telegrambot.censor import censor_colour
-from database import User, create_group_id_tables
+from database import User, GroupStats, MessageLog
 from data_create import db
 from datetime import datetime
 
@@ -275,124 +275,80 @@ def detect_image(filepath):
 #     return jsonify({'error': 'User not found'}), 404
 
 
-@app.route('/add_user', methods=['POST'])
-def add_user():
+# db.create_all()
+
+
+@app.route('/message', methods=['POST'])
+def log_message():
     data = request.get_json()
-    new_message = User(
-        user_id=data['user_id'],
-        username=data['username'],
-        group_id=data['group_id']
-    )
-    db.session.add(new_message)
-    db.session.commit()
-    return 'added successfully', 201
 
+    user_id = data.get('user_id')
+    group_id = data.get('group_id')
+    message = data.get('message')
+    is_text = data.get('is_text')
+    is_nsfw = data.get('is_nsfw')
 
-@app.route('/stats/<user_id>')
-def stats(user_id):
-    message_count = User.query.filter_by(user_id=user_id).count()
-    return jsonify({'messages': message_count})
+    try:
+        # Добавляем пользователя в общую таблицу
+        user = User.query.get(user_id)
+        if not user:
+            user = User(user_id=user_id)
+            db.session.add(user)
+            db.session.commit()
 
-
-@app.route('/add_photo', methods=['POST'])
-def add_photo():
-    data = request.get_json()
-    user_id = data['user_id']
-    username = data['username']
-    group_id = data['group_id']
-    # photo_data = data.get('photo_data')
-    create_group_id_tables(group_id)
-    is_nsfw = False  # TODO
-    if is_nsfw:
-        nsfw_photo = 1
-    else:
-        nsfw_photo = 0
-
-    photo_table_name = f'group_{group_id}_photos'
-    Photo = type('Photo', (db.Model,), {'__tablename__': photo_table_name,
-                                        'id': db.Column(db.Integer, primary_key=True,
-                                                        autoincrement=True),
-                                        'user_id': db.Column(db.Integer, nullable=False),
-                                        'username': db.Column(db.String(80), nullable=False),
-                                        'group_id': db.Column(db.Integer, nullable=False),
-                                        'nsfw_photo': db.Column(db.Integer, nullable=False,
-                                                                default=0),
-                                        'timestamp': db.Column(db.DateTime, nullable=False,
-                                                               default=datetime.utcnow)})
-    new_photo = Photo(user_id=user_id, username=username, group_id=group_id, nsfw_photo=nsfw_photo)
-    db.session.add(new_photo)
-
-    stats_table_name = f'group_{group_id}_user_stats'
-    UserStats = type('UserStats', (db.Model,), {'__tablename__': stats_table_name,
-                                                'id': db.Column(db.Integer, primary_key=True,
-                                                                autoincrement=True),
-                                                'user_id': db.Column(db.Integer, nullable=False),
-                                                'group_id': db.Column(db.Integer, nullable=False),
-                                                'count_safe_photos_sent': db.Column(db.Integer,
-                                                                                    nullable=False,
-                                                                                    default=0),
-                                                'count_nsfw_photos_sent': db.Column(db.Integer,
-                                                                                    nullable=False,
-                                                                                    default=0),
-                                                'count_messages_sent': db.Column(db.Integer,
-                                                                                 nullable=False,
-                                                                                 default=0)})
-    user_stats = UserStats.query.filter_by(user_id=user_id, group_id=group_id).first()
-    if user_stats:
+        # Обновляем статистику пользователя в группе
+        group_stats = GroupStats.query.filter_by(
+            user_id=user_id,
+            group_id=group_id
+        ).first()
+        if not group_stats:
+            group_stats = GroupStats(user_id=user_id, group_id=group_id)
+            db.session.add(group_stats)
+        if is_text:
+            group_stats.count_test_messages_sent += 1
         if is_nsfw:
-            user_stats.count_nsfw_photos_sent += 1
+            group_stats.count_nsfw_photos_sent += 1
         else:
-            user_stats.count_safe_photos_sent += 1
-    else:
-        if is_nsfw:
-            user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=0,
-                                   count_safe_photos_sent=0, count_nsfw_photos_sent=1)
+            group_stats.count_safe_photos_sent += 1
+
+        db.session.commit()
+
+        # Логируем сообщение
+        message_log = MessageLog(
+            user_id=user_id,
+            group_id=group_id,
+            message=message,
+            is_text=is_text,
+            is_nsfw=is_nsfw
+        )
+        db.session.add(message_log)
+        db.session.commit()
+
+        return jsonify({'message': 'Данные сохранены'}), 201
+    except Exception as e:
+        print(f"Ошибка при сохранении данных: {e}")
+        return jsonify({'error': 'Ошибка сервера'}), 500
+
+
+@app.route('/stats/<int:group_id>/<int:user_id>')
+def get_user_stats(group_id, user_id):
+    try:
+        stats = GroupStats.query.filter_by(
+            user_id=user_id,
+            group_id=group_id
+        ).first()
+
+        if stats:
+            return jsonify({
+                'text_messages': stats.count_test_messages_sent,
+                'safe_photos': stats.count_safe_photos_sent,
+                'nsfw_photos': stats.count_nsfw_photos_sent
+            }), 200
         else:
-            user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=0,
-                                   count_safe_photos_sent=1, count_nsfw_photos_sent=0)
-    db.session.add(user_stats)
-    db.session.commit()
-
-    return 'Photo added', 201
-
-
-@app.route('/add_message', methods=['POST'])
-def add_message():
-    data = request.get_json()
-    user_id = data['user_id']
-    username = data['username']
-    group_id = data['group_id']
-    message = data['message']
-
-    # Create tables if they don't exist (when first message from user is sent to a group)
-    create_group_id_tables(group_id)
-    stats_table_name = f'group_{group_id}_user_stats'
-    UserStats = type('UserStats', (db.Model,), {'__tablename__': stats_table_name,
-                                                'id': db.Column(db.Integer, primary_key=True,
-                                                                autoincrement=True),
-                                                'user_id': db.Column(db.Integer, nullable=False),
-                                                'group_id': db.Column(db.Integer, nullable=False),
-                                                'count_safe_photos_sent': db.Column(db.Integer,
-                                                                                    nullable=False,
-                                                                                    default=0),
-                                                'count_nsfw_photos_sent': db.Column(db.Integer,
-                                                                                    nullable=False,
-                                                                                    default=0),
-                                                'count_messages_sent': db.Column(db.Integer,
-                                                                                 nullable=False,
-                                                                                 default=0)})
-
-    user_stats = UserStats.query.filter_by(user_id=user_id, group_id=group_id).first()
-    if user_stats:
-        user_stats.count_messages_sent += 1
-    else:
-        user_stats = UserStats(user_id=user_id, group_id=group_id, count_messages_sent=1,
-                               count_safe_photos_sent=0, count_nsfw_photos_sent=0)
-
-    db.session.add(user_stats)
-    db.session.commit()
-
-    return 'Message added', 201
+            return jsonify({'message': 'Статистика не найдена'}), 404
+    except Exception as e:
+        print(f"Ошибка при получении статистики: {e}")
+        return jsonify({'error': 'Ошибка сервера'}), 500
 
 
 if __name__ == '__main__':
