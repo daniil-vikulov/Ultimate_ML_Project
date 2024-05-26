@@ -4,6 +4,7 @@ from win.app.back.background_task import LoopThread
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QSystemTrayIcon, QMenu, QVBoxLayout, QWidget
 from PyQt5.QtGui import QIcon, QFont
 
+from win.app.gui.transparent_window import TransparentWindow
 from win.app.tools import calculate_font_size
 
 
@@ -15,7 +16,10 @@ class MainWindow(QMainWindow):
         self.lay = None
         self.icon = QIcon('data/icon.png')
         self.initUI()
+        self.canvas = TransparentWindow()
         self.thread = LoopThread()
+        self.thread.update_canvas_signal.connect(self.canvas.set_rectangle)
+        self.canvas.showFullScreen()
         self.thread.start()
 
     def initUI(self):
@@ -59,7 +63,7 @@ class MainWindow(QMainWindow):
             self.thread.stop_loop()
 
     def closeEvent(self, event):
-        if self.button.text() == 'Stop':
+        if self.thread.running:
             event.ignore()
             self.hide()
             self.tray_icon.showMessage(

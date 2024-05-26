@@ -9,7 +9,10 @@ class TransparentWindow(QtWidgets.QWidget):
         self.setGeometry(100, 100, 400, 400)
         self.setWindowTitle('Transparent Window with Solid Rectangle')
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        # self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
