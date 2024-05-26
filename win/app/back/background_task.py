@@ -1,7 +1,6 @@
-from PyQt5.QtCore import QThread, pyqtSignal
-
 from PIL import ImageGrab
-
+from PyQt5.QtCore import QThread, pyqtSignal
+from win.app.back.model_wrapper import Detector
 
 
 class LoopThread(QThread):
@@ -10,17 +9,17 @@ class LoopThread(QThread):
     def __init__(self):
         super().__init__()
         self.running = False
-        self.detector = NudeDetector()
+        self.detector = Detector(0, False)
 
     def run(self):
         while True:
             if self.running:
-                self.looptick()
+                self.loop_tick()
 
-    def looptick(self):
+    def loop_tick(self):
         screenshot = ImageGrab.grab()
         screenshot.save('screenshot.png')
-        result = self.detector.detect(image_path='screenshot.png')
+        result = self.detector.detect(screenshot)
         print(result)
 
     def start_loop(self):

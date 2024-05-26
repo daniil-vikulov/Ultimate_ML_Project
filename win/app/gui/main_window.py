@@ -1,8 +1,8 @@
-from PyQt5 import QtCore, Qt
+from PyQt5 import QtCore
 
 from win.app.back.background_task import LoopThread
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QSystemTrayIcon, QMenu, QVBoxLayout, QWidget
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon
 
 
 class MainWindow(QMainWindow):

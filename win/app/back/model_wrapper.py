@@ -35,10 +35,24 @@ class Detector:
             """
 
         self.detector = NudeDetector()
-        self.explicit_categories = self.generate_categories(tolerance, no_face)
+        self.explicit_categories = self.__generate_categories__(tolerance, no_face)
+
+    def detect(self, image) -> []:
+        """
+        Checks image for nudity content.
+
+        :param image: image to be checked
+        :return a list of found explicit categories. If image is safe, returns empty list
+        """
+        image.save('baby_guard_temp_screenshot.png')
+        result = self.detector.detect(image_path='baby_guard_temp_screenshot.png')
+        return self.__filter__(result)
+
+    def censor(self, image):
+        pass
 
     @staticmethod
-    def generate_categories(tolerance, no_face) -> []:
+    def __generate_categories__(tolerance, no_face) -> []:
         explicit_categories = []
         if no_face:
             explicit_categories.append('FACE_FEMALE')
@@ -68,3 +82,11 @@ class Detector:
             explicit_categories.append('FEMALE_BREAST_COVERED')
 
         return explicit_categories
+
+    def __filter__(self, result) -> []:
+        result_list = []
+        for category in result:
+            if category['class'] in self.explicit_categories:
+                result_list.append(category['class'])
+
+        return result_list
