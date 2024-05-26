@@ -2,7 +2,9 @@ from PyQt5 import QtCore
 
 from win.app.back.background_task import LoopThread
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QSystemTrayIcon, QMenu, QVBoxLayout, QWidget
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
+
+from win.app.tools import calculate_font_size
 
 
 class MainWindow(QMainWindow):
@@ -11,7 +13,7 @@ class MainWindow(QMainWindow):
         self.tray_icon = None
         self.button = None
         self.lay = None
-        self.icon = QIcon("C:\\Users\\dv\\PycharmProjects\\Ultimate_ML_Project\\win\\app\\data\\icon.png")
+        self.icon = QIcon('data/icon.png')
         self.initUI()
         self.thread = LoopThread()
         self.thread.start()
@@ -39,6 +41,8 @@ class MainWindow(QMainWindow):
 
         self.button = QPushButton('Start', self)
         self.button.clicked.connect(self.button_handler)
+        self.button.setFont(QFont('Arial', calculate_font_size()))
+        self.button.adjustSize()
 
         self.lay = QVBoxLayout(central_widget)
         self.lay.setAlignment(QtCore.Qt.AlignCenter)
@@ -55,7 +59,7 @@ class MainWindow(QMainWindow):
             self.thread.stop_loop()
 
     def closeEvent(self, event):
-        if self.thread.isRunning():
+        if self.button.text() == 'Stop':
             event.ignore()
             self.hide()
             self.tray_icon.showMessage(
@@ -63,4 +67,5 @@ class MainWindow(QMainWindow):
                 "The application is still running in the background.",
                 QSystemTrayIcon.Information, 2000)
         else:
+            print("terminating")
             event.accept()

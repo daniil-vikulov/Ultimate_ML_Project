@@ -46,10 +46,19 @@ class Detector:
         """
         image.save('baby_guard_temp_screenshot.png')
         result = self.detector.detect(image_path='baby_guard_temp_screenshot.png')
-        return self.__filter__(result)
+        return self.__get_categories__(self.__filter__(result))
 
-    def censor(self, image):
-        pass
+    def censor(self, image) -> []:
+        """
+        Checks image for nudity content and returns the list of rectangles, which contain nudity.
+
+        :param image: image to be checked
+        :return: list() of rectangles, specifying areas, which should be censored
+        """
+        image.save('baby_guard_temp_screenshot.png')
+        result = self.detector.detect(image_path='baby_guard_temp_screenshot.png')
+
+        return self.__get_rectangles__(self.__filter__(result))
 
     @staticmethod
     def __generate_categories__(tolerance, no_face) -> []:
@@ -83,10 +92,26 @@ class Detector:
 
         return explicit_categories
 
+    @staticmethod
+    def __get_rectangles__(lst) -> []:
+        res = []
+        for category in lst:
+            res.append(category['box'])
+
+        return res
+
+    @staticmethod
+    def __get_categories__(lst) -> []:
+        res = []
+        for category in lst:
+            res.append(category['class'])
+
+        return res
+
     def __filter__(self, result) -> []:
         result_list = []
         for category in result:
             if category['class'] in self.explicit_categories:
-                result_list.append(category['class'])
+                result_list.append(category)
 
         return result_list

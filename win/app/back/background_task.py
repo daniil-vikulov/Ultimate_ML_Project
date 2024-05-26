@@ -19,7 +19,7 @@ class LoopThread(QThread):
     def loop_tick(self):
         screenshot = ImageGrab.grab()
         screenshot.save('screenshot.png')
-        result = self.detector.detect(screenshot)
+        result = self.detector.censor(screenshot)
         print(result)
 
     def start_loop(self):
