@@ -308,10 +308,16 @@ def log_message():
             db.session.commit()
         if is_text:
             group_stats.count_test_messages_sent += 1
+            group_stats.count_nsfw_photos_sent = group_stats.count_nsfw_photos_sent
+            group_stats.count_safe_photos_sent = group_stats.count_safe_photos_sent
         if is_nsfw:
             group_stats.count_nsfw_photos_sent += 1
-        else:
+            group_stats.count_test_messages_sent = group_stats.count_test_messages_sent
+            group_stats.count_safe_photos_sent = group_stats.count_safe_photos_sent
+        elif not is_nsfw and not is_text:
             group_stats.count_safe_photos_sent += 1
+            group_stats.count_test_messages_sent = group_stats.count_test_messages_sent
+            group_stats.count_nsfw_photos_sent = group_stats.count_nsfw_photos_sent
 
         db.session.commit()
 
@@ -334,7 +340,7 @@ def log_message():
         return jsonify({'error': 'Ошибка сервера'}), 500
 
 
-@app.route('/stats/<int:group_id>/<int:user_id>')
+@app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
     try:
         stats = GroupStats.query.filter_by(

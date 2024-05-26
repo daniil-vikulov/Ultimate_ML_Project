@@ -71,7 +71,7 @@ def is_nsfw_image(file_path):
 
     try:
         result = classifier.classify(file_path)[file_path]
-        return result['unsafe'] > 0.5
+        return result['unsafe'] > 0.3
     except Exception as e:
         print(f"Ошибка при проверке NSFW: {e}")
         return False
@@ -92,32 +92,75 @@ def get_stats(message):
         bot.reply_to(message, "Ошибка при получении статистики.")
 
 
-@bot.message_handler(content_types=['text', 'photo'])
+@bot.message_handler(func=lambda message: True)
 def process_message(message):
     user_id = message.from_user.id
     group_id = message.chat.id
+    username = message.from_user.username
     is_text = 1 if message.content_type == 'text' else 0
     message_text = message.text if is_text else ''
 
     is_nsfw = 0
-    if message.content_type == 'photo':
-        # Скачиваем фото
-        file_info = bot.get_file(message.photo[-1].file_id)
-        file_path = bot.download_file(file_info.file_path)
-
-        is_nsfw = 1 if is_nsfw_image(file_path) else 0
+    # if message.content_type == 'photo':
+    #     # Скачиваем фото
+    #     file_info = bot.get_file(message.photo[-1].file_id)
+    #     file_path = bot.download_file(file_info.file_path)
+    #
+    #     is_nsfw = 1 if is_nsfw_image(file_path) else 0
 
     try:
         data = {
             'user_id': user_id,
             'group_id': group_id,
             'message': message_text,
+            'username': username,
             'is_text': is_text,
             'is_nsfw': is_nsfw
         }
         response = requests.post(f'http://127.0.0.1:5000/message', json=data)
-        # if response.status_code != 201:
-        #     print(f'server error {response.text}')
+        if response.status_code != 201:
+            print(f'server error {response.text}')
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при отправке данных на сервер: {e}")
+
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    if message.content_type == 'photo':
+        file_id = message.photo[-1].file_id
+    elif message.content_type == 'document':
+        file_id = message.document.file_id
+    is_text = 0
+    file_info = bot.get_file(file_id)
+    file_name = f'image_{image_cnt}.jpg'
+    downloaded_file = bot.download_file(file_info.file_path)
+    with open(file_name, 'wb') as img:
+        img.write(downloaded_file)
+    # bot.send_message(message.chat.id, f"photo image_{image_cnt}.jpg saved successfully")
+    url_detect = f'http://127.0.0.1:5000/detect'
+    files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
+    response = requests.post(url_detect, files=files)
+    files['file'][1].close()
+    if response.status_code == 200:
+        result = response.json()
+        detected_parts = result['detected_parts']
+        # print(detected_parts)
+    # detected = detector.detect(f'image_{image_cnt}.jpg')
+    face_classes = ['FACE_FEMALE', 'FACE_MALE']
+    only_face_classes = all(detection["class"] in face_classes for detection in detected_parts)
+    is_nsfw = 0 if only_face_classes else 1
+    try:
+        data = {
+            'user_id': message.from_user.id,
+            'group_id': message.chat.id,
+            'message': message.text,
+            'username': message.from_user.username,
+            'is_text': is_text,
+            'is_nsfw': is_nsfw
+        }
+        response = requests.post(f'http://127.0.0.1:5000/message', json=data)
+        if response.status_code != 201:
+            print(f'server error {response.text}')
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при отправке данных на сервер: {e}")
 
