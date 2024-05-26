@@ -1,5 +1,8 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 
+from PIL import ImageGrab
+
+
 
 class LoopThread(QThread):
     run_signal = pyqtSignal(bool)
@@ -7,6 +10,7 @@ class LoopThread(QThread):
     def __init__(self):
         super().__init__()
         self.running = False
+        self.detector = NudeDetector()
 
     def run(self):
         while True:
@@ -14,8 +18,10 @@ class LoopThread(QThread):
                 self.looptick()
 
     def looptick(self):
-        # TODO add real logic
-        print("Tick")
+        screenshot = ImageGrab.grab()
+        screenshot.save('screenshot.png')
+        result = self.detector.detect(image_path='screenshot.png')
+        print(result)
 
     def start_loop(self):
         self.running = True
