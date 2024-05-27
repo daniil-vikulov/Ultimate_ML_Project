@@ -25,18 +25,24 @@ void bg::saveWindows(std::vector<HWND> &windows) {
     for (int i = 0; i < windows.size(); ++i) {
         std::wstring bitmapPath = L"output/";
         bitmapPath += std::to_wstring(i);
-        bitmapPath += L".txt";
+        bitmapPath += L".png";
 
         HWND hwnd = windows[i];
 
         RECT rect;
-        GetWindowRect(hwnd, &rect);
+        GetClientRect(hwnd, &rect);
 
         HWND aboveHwnd = GetWindow(hwnd, GW_HWNDPREV); // If the window is most-top, aboveHwnd equals to hwnd
 
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
 
+        if (width > 100 && height > 100) {
+            saveToPng(captureWindow(hwnd), bitmapPath);
+        }
 
-        file << rect.left << "," << rect.top << "," << (rect.right - rect.left) << "," << (rect.bottom - rect.top) << ","
+        file << rect.left << "," << rect.top << "," << width << "," << height
+             << ","
              << reinterpret_cast<uintptr_t>(hwnd) << ","
              << reinterpret_cast<uintptr_t>(aboveHwnd) << ","
              << std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(getWindowTitle(hwnd))
@@ -194,5 +200,45 @@ bool bg::saveToPng(HBITMAP hBitmap, const std::wstring &filePath) {
 }
 
 HBITMAP bg::captureWindow(HWND hwnd) {
-    return nullptr;
+    HDC hWindowDc = GetWindowDC(hwnd);
+
+    HDC hCaptureDc = CreateCompatibleDC(hWindowDc);
+
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+
+    HBITMAP hBitmap = CreateCompatibleBitmap(hWindowDc, rect.right - rect.left, rect.bottom - rect.top);
+
+    PrintWindow(hwnd, hCaptureDc, 0);
+    HGDIOBJ hPrevObject = SelectObject(hCaptureDc, hBitmap);
+
+//    BitBlt(hCaptureDc, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, hWindowDc,
+//           0, 0, SRCCOPY);
+
+    SelectObject(hCaptureDc, hPrevObject);
+
+    DeleteDC(hCaptureDc);
+    ReleaseDC(hwnd, hWindowDc);
+
+    return hBitmap;
+}
+
+HBITMAP bg::captureScreen() {
+    HDC hScreenDC = GetDC(nullptr);
+    HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
+
+    int width = GetDeviceCaps(hScreenDC, HORZRES);
+    int height = GetDeviceCaps(hScreenDC, VERTRES);
+
+    std::cout << width << ' ' << height << std::endl;
+
+    HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
+    auto hOldBitmap = static_cast<HBITMAP>(SelectObject(hMemoryDC, hBitmap));
+
+    BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
+    hBitmap = static_cast<HBITMAP>(SelectObject(hMemoryDC, hOldBitmap));
+    DeleteDC(hMemoryDC);
+    DeleteDC(hScreenDC);
+
+    return hBitmap;
 }

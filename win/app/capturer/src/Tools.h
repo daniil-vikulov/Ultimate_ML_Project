@@ -35,4 +35,6 @@ namespace bg {
     bool saveToPng(HBITMAP hBitmap, const std::wstring &filePath);
 
     HBITMAP captureWindow(HWND hwnd);
+
+    HBITMAP captureScreen();
 }
