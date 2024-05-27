@@ -1,6 +1,7 @@
 import logging
 
 from flask import request, jsonify, Flask
+from matplotlib import pyplot as plt
 
 from data_create import db
 from datetime import datetime
@@ -169,9 +170,38 @@ def login_user():
     return jsonify({'error': 'User not found'}), 404
 
 
-def get_stats():
-    users = User.query.all()
-    stats = [{'id': user.id, 'user_id': user.user_id, 'username': user.username, 'group_id': user.group_id} for user in users]
-    return jsonify(stats), 200
+def get_stats(user_id, group_id):
+    stats = GroupStats.query.filter_by(
+        user_id=user_id,
+        group_id=group_id
+    ).first()
+
+    if stats:
+        return jsonify({
+            'text_messages': stats.count_test_messages_sent,
+            'safe_photos': stats.count_safe_photos_sent,
+            'nsfw_photos': stats.count_nsfw_photos_sent,
+            'graph_url': f'../backend/src/app/uploads/user_activity_{group_id}.png'
+        }), 200
+
+
+def draw_plot(group_id):
+    messages = (MessageLog.query.filter_by(group_id=group_id)
+                .order_by(MessageLog.timestamp.asc())
+                .all())
+
+    dates = [msg.timestamp.date() for msg in messages]
+    counts = [dates.count(date) for date in dates]
+
+    plt.figure(figsize=(10, 5))
+    plt.bar(dates, counts)
+    plt.xlabel('Дата')
+    plt.ylabel('Количество сообщений')
+    plt.title('Активность пользователей в группе')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig(f'uploads/user_activity_{group_id}.png')
+    plt.close()
+
 
 
