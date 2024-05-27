@@ -5,4 +5,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin/)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Capturer main.cpp src/Tools.cpp)
+add_executable(${PROJECT_NAME} main.cpp src/Tools.cpp)
+
+target_link_libraries(${PROJECT_NAME} Gdiplus.lib)
