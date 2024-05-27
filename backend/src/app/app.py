@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 import data_create
 import database
 from telegrambot.censor import censor_colour
-from database import User, GroupStats, MessageLog
+from database import User, GroupStats, MessageLog, get_stats, draw_plot
 from data_create import db
 from datetime import datetime
 
@@ -343,17 +343,21 @@ def log_message():
 @app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
     try:
+        draw_plot(group_id)
         stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id
         ).first()
 
         if stats:
-            return jsonify({
-                'text_messages': stats.count_test_messages_sent,
-                'safe_photos': stats.count_safe_photos_sent,
-                'nsfw_photos': stats.count_nsfw_photos_sent
-            }), 200
+            # return jsonify({
+            #     'text_messages': stats.count_test_messages_sent,
+            #     'safe_photos': stats.count_safe_photos_sent,
+            #     'nsfw_photos': stats.count_nsfw_photos_sent
+            # }), 200
+            return get_stats(user_id, group_id)\
+                # , \
+                # {'graph_url': f'http://127.0.0.1:5000/uploads/user_activity_{group_id}.png'}
         else:
             return jsonify({'message': 'Статистика не найдена'}), 404
     except Exception as e:

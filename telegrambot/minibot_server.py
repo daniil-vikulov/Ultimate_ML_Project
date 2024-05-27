@@ -1,6 +1,7 @@
 import requests
 import telebot
 from token_bot import bot, mytoken
+# from backend.statistics.functions.statistic_methods import get_user_stats
 
 image_cnt = 0
 
@@ -86,7 +87,21 @@ def get_stats(message):
         response = requests.get(f'http://127.0.0.1:5000/stats/{group_id}/{user_id}')
         response.raise_for_status()  # Проверка на ошибки HTTP
         stats = response.json()
-        bot.reply_to(message, f"Ваша статистика:\n{stats}")
+        # bot.reply_to(message, f"Ваша статистика:\n{stats}")
+        stats_text = (
+            f"Ваша статистика:\n"
+            f"Текстовых сообщений: {stats.get('text_messages', 'N/A')}\n"
+            f"Безопасных фото: {stats.get('safe_photos', 'N/A')}\n"
+            f"NSFW фото: {stats.get('nsfw_photos', 'N/A')}"
+        )
+        bot.reply_to(message, stats_text)
+        graph_url = stats.get('graph_url')
+        if graph_url:
+            with open(graph_url, 'rb') as g:
+                bot.send_photo(message.chat.id, g)
+        else:
+            bot.reply_to(message, "График недоступен.")
+
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при получении статистики: {e}")
         bot.reply_to(message, "Ошибка при получении статистики.")
