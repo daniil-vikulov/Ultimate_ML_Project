@@ -19,7 +19,7 @@ def check_and_create_db(app):
     db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     if not os.path.exists(db_path):
         db.create_all()
-        logger.info("Database created")
+        logger.info("Database is created")
     else:
         # os.remove(db_path)
         # db.create_all()

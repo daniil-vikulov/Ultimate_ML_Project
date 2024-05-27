@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем весь проект в рабочую директорию
-COPY . .
+COPY . /telegrambot
 
 # Указываем команду для запуска бота
 CMD ["python", "trybot.py"]
