@@ -9,8 +9,8 @@ from werkzeug.utils import secure_filename
 
 import data_create
 import database
-from telegrambot.censor import censor_colour
-from database import User, GroupStats, MessageLog, get_stats, draw_plot
+from censor import censor_colour
+from database import User, GroupStats, MessageLog
 from data_create import db
 from datetime import datetime
 
@@ -207,77 +207,6 @@ def detect_image(filepath):
         return jsonify({'error': str(e)}), 500
 
 
-# def validate_username(username):
-#     if not username or not username.strip():
-#         logger.error("Username is required and cannot be empty.")
-#         return False
-#     return True
-#
-#
-# def validate_request(request_data):
-#     if 'username' not in request_data:
-#         return jsonify({'error': 'Username is required'}), 400
-#     if not validate_username(request_data['username']):
-#         return jsonify({'error': 'Username cannot be empty'}), 400
-#     return None
-#
-#
-# @app.route('/register', methods=['POST'])
-# def register_user():
-#     """
-#     Registers a new user with a unique username.
-#     :return: JSON response indicating success or failure of user registration.
-#     """
-#     request_data = request.get_json()
-#     validation_error = validate_request(request_data)
-#     if validation_error:
-#         return validation_error
-#
-#     username = request_data['username'].strip()
-#     existing_user = User.query.filter_by(username=username).first()
-#
-#     # Checking the presence of a user in the database
-#     if existing_user:
-#         logger.error(f"Username {username} already exists.")
-#         return jsonify({'error': 'Username already exists'}), 409
-#
-#     # If there is no username, add it to the database
-#     try:
-#         new_user = User(username=username)
-#         data.session.add(new_user)
-#         data.session.commit()
-#         logger.info(f"User {username} registered successfully.")
-#         return jsonify({'message': 'User registered successfully'}), 201
-#     except Exception as e:
-#         data.session.rollback()
-#         logger.exception("Failed to register user due to unexpected error")
-#         return jsonify({'error': str(e)}), 500
-#
-#
-# @app.route('/login', methods=['POST'])
-# def login_user():
-#     """
-#     Logs in a user by username.
-#     :return: JSON response indicating whether the login was successful or not.
-#     """
-#     request_data = request.get_json()
-#     validation_error = validate_request(request_data)
-#     if validation_error:
-#         return validation_error
-#
-#     username = request_data['username'].strip()
-#     user = User.query.filter_by(username=username).first()
-#     if user:
-#         logger.info(f"Login successful for {username}")
-#         return jsonify({'message': 'Login successful'}), 200
-#
-#     logger.error(f"User {username} not found")
-#     return jsonify({'error': 'User not found'}), 404
-
-
-# db.create_all()
-
-
 @app.route('/message', methods=['POST'])
 def log_message():
     data = request.get_json()
@@ -343,21 +272,17 @@ def log_message():
 @app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
     try:
-        draw_plot(group_id)
         stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id
         ).first()
 
         if stats:
-            # return jsonify({
-            #     'text_messages': stats.count_test_messages_sent,
-            #     'safe_photos': stats.count_safe_photos_sent,
-            #     'nsfw_photos': stats.count_nsfw_photos_sent
-            # }), 200
-            return get_stats(user_id, group_id)\
-                # , \
-                # {'graph_url': f'http://127.0.0.1:5000/uploads/user_activity_{group_id}.png'}
+            return jsonify({
+                'text_messages': stats.count_test_messages_sent,
+                'safe_photos': stats.count_safe_photos_sent,
+                'nsfw_photos': stats.count_nsfw_photos_sent
+            }), 200
         else:
             return jsonify({'message': 'Статистика не найдена'}), 404
     except Exception as e:

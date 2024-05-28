@@ -28,7 +28,7 @@ The main server code is in the file `src/app/app.py`
 - _409 Conflict_: Server is trying to register a new user with a username that is already occupied
 - _500 Internal Server Error_: Fatal server error when processing a file.
 
-### Usage examples
+### Usage examples in terminal
 
 Enter commands in terminal.
 For items 1-3, you need to upload the image to the folder `src/app/uploads` (it will be created automatically when the server starts).
@@ -64,4 +64,55 @@ The censored images will appear there too.
 
    **Return**: _Login successful_ if this username exists or _User not found_ if it doesn't exist
 
-# TODO добавить инструкцию 
+### Usage examples in code
+
+#### 1. **Image censor request using Python**:
+
+`import requests, json`
+
+    url = 'http://localhost:5000/censor'
+    files = {'file': open('path_to_image.jpg', 'rb')}
+    response = requests.post(url, files=files)
+    if response.status_code == 200:
+        with open('uploads/path_to_image_censored.jpg', 'wb') as f:
+            f.write(response.content)
+
+#### 2. **Request for image classification using Python**:
+
+    url = 'http://localhost:5000/classify'
+    files = {'file': open('path_to_image.jpg', 'rb')}
+    response = requests.post(url, files=files)
+    if response.status_code == 200:
+        print(response.json())  # This will print the classification scores for 'safe' and 'unsafe'
+
+
+#### 3. **Request to detect objects in the image using Python**:
+
+    url = 'http://localhost:5000/detect'
+    files = {'file': open('path_to_image.jpg', 'rb')}
+    response = requests.post(url, files=files)
+    if response.status_code == 200:
+        print(response.json())  # This will print the list of detected parts and their scores
+
+
+#### 4. **Request to register a user using Python**:
+
+    url = 'http://localhost:5000/register'
+    headers = {'Content-Type': 'application/json'}
+    data = json.dumps({"username": "new_user"})  # Replace 'new_user' with the desired username
+    response = requests.post(url, headers=headers, data=data)
+    print(response.text)  # This will print 'User registered successfully' or 'Username already exists'
+
+
+#### 5. **Request to login a user using Python**:
+
+    url = 'http://localhost:5000/login'
+    headers = {'Content-Type': 'application/json'}
+    data = json.dumps({"username": "new_user"})  # Replace 'new_user' with the desired username
+    response = requests.post(url, headers=headers, data=data)
+    print(response.text)  # This will print 'Login successful' or 'User not found'
+
+
+In each case, make sure to replace `path_to_image.jpg` with the actual path to your image and `new_user` with the actual
+username you intend to use for registration and login.
+

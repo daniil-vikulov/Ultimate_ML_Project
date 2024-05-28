@@ -1,19 +1,47 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   server:
     build:
-      context: ./backend/src/app
-    ports:
-      - "5000:5000"  # Настройте порт, если ваш сервер работает на другом порту
+      context: ./backend
+    restart: always
+    depends_on:
+      - db
     environment:
-      - FLASK_ENV=production
+      DATABASE_URL: postgresql://user:password@db:5432/mydatabase
+    volumes:
+      - ./backend/src/app/uploads:/app/uploads
+    networks:
+      - app-network
+    ports:
+      - "5000:5000"
 
   bot:
     build:
       context: ./telegrambot
+    restart: always
+    volumes:
+      - ./backend/src/app/uploads:/app/uploads
+    networks:
+      - app-network
     depends_on:
       - server
     environment:
-      - TELEGRAM_API_KEY=6785016047:AAHWxLLs1KzFHo47vlRMkSrpbOeOpMt2LPw # Установите ваш API ключ здесь
-      - SERVER_URL= http://127.0.0.1:5000  # URL вашего сервера в Docker-сети
+      SERVER_URL: http://server:5000 # URL вашего сервера внутри сети Docker
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

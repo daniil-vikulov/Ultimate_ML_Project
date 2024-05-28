@@ -255,7 +255,7 @@ def handle_photo(message):
                 files['file'][1].close()
                 if response.status_code == 200:
                     answer = response.json()
-                    censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
+                    censored = answer.get('censored_image_path')
                     if censored:
                         # censored = detector.censor(f'image_{image_cnt}.jpg')
                         with open(censored, 'rb') as c:
