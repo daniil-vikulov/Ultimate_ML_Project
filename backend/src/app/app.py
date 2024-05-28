@@ -3,14 +3,15 @@ import os
 
 from PIL import Image
 from flask import Flask, request, jsonify
-from nudenet.classifier import Classifier as NudeClassifier
+import nudenet
+from nudenet import NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
 import data_create
 import database
-from censor import censor_colour
-from database import User, GroupStats, MessageLog
+from telegrambot.censor import censor_colour
+from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users
 from data_create import db
 from datetime import datetime
 
@@ -28,7 +29,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats'}
+ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'group_stats'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 data_create.init_app(app)
@@ -218,14 +219,10 @@ def log_message():
     is_nsfw = data.get('is_nsfw')
 
     try:
-        # Добавляем пользователя в общую таблицу
         user = User.query.get(user_id)
         if not user:
             user = User(user_id=user_id, group_id=group_id, username=username)
             db.session.add(user)
-            # db.session.commit()
-
-        # Обновляем статистику пользователя в группе
         group_stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id,
@@ -250,7 +247,6 @@ def log_message():
 
         db.session.commit()
 
-        # Логируем сообщение
         message_log = MessageLog(
             user_id=user_id,
             group_id=group_id,
@@ -272,21 +268,51 @@ def log_message():
 @app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
     try:
+        draw_plot(group_id)
+        draw_user_stats(user_id, group_id)
+        plot_top_users(group_id, 5)
         stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id
         ).first()
 
         if stats:
-            return jsonify({
-                'text_messages': stats.count_test_messages_sent,
-                'safe_photos': stats.count_safe_photos_sent,
-                'nsfw_photos': stats.count_nsfw_photos_sent
-            }), 200
+            return get_stats(user_id, group_id)
         else:
             return jsonify({'message': 'Статистика не найдена'}), 404
     except Exception as e:
         print(f"Ошибка при получении статистики: {e}")
+        return jsonify({'error': 'Ошибка сервера'}), 500
+
+
+@app.route('/group_stats/<group_id>')
+def get_group_stats(group_id):
+    try:
+        top_nsfw_users = (db.session.query(GroupStats)
+                          .filter(GroupStats.group_id == group_id)
+                          .order_by(GroupStats.count_nsfw_photos_sent.desc())
+                          .all())
+
+        top_active_users = (db.session.query(GroupStats)
+                            .filter(GroupStats.group_id == group_id)
+                            .order_by((GroupStats.count_test_messages_sent +
+                                       GroupStats.count_safe_photos_sent +
+                                       GroupStats.count_nsfw_photos_sent).desc())
+                            .all())
+
+        return jsonify({
+            'top_nsfw_users': [
+                {'user_id': stats.user_id, 'username': stats.username, 'nsfw_count': stats.count_nsfw_photos_sent} for
+                stats in top_nsfw_users],
+            'top_active_users': [{'user_id': stats.user_id, 'username': stats.username,
+                                  'total_messages': stats.count_test_messages_sent +
+                                                    stats.count_safe_photos_sent +
+                                                    stats.count_nsfw_photos_sent}
+                                 for stats in top_active_users]
+        }), 200
+
+    except Exception as e:
+        print(f"Ошибка при получении статистики группы: {e}")
         return jsonify({'error': 'Ошибка сервера'}), 500
 
 
