@@ -1,18 +1,19 @@
 import logging
 import os
 
-import cv2
 from PIL import Image
 from flask import Flask, request, jsonify
-from nudenet.classifier import Classifier as NudeClassifier
+import nudenet
+from nudenet import NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
 import data_create
 import database
-from colours import colours
+from telegrambot.censor import censor_colour
+from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users
 from data_create import db
-from database import User, GroupStats, MessageLog
+from datetime import datetime
 
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # project_root = os.path.join(current_dir, '../../../')
@@ -28,7 +29,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'censor_colour'}
+ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'group_stats'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 data_create.init_app(app)
@@ -128,11 +129,12 @@ def process_image_file(filepath, action):
         elif action == 'detect':
             return detect_image(filepath)
         elif action == 'censor_colour':
-            colour = request.form.get('colour')
+            colour = request.args.get('colour')
             if not colour:
-                return jsonify({'error': 'Colour is required for censor_colour action'}), 400
-            return censor_image_with_colour(filepath, colour)
+                return jsonify({'error': 'Missing colour parameter'}), 400
+            return censor_colour_image(filepath, colour=colour)
     except Exception as e:
+        logger.exception("Error processing image")
         return jsonify({'error': str(e)}), 500
 
 
@@ -146,7 +148,7 @@ def censor_image(filepath):
     logger.info(f"Censoring image at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
-        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
+        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored.jpg")
         detector.censor(filepath)
         logger.info(f"Image censored successfully. Saved to {censored_filepath}")
         return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
@@ -155,40 +157,17 @@ def censor_image(filepath):
         return jsonify({'error': str(e)}), 500
 
 
-def censor_image_with_colour(filepath, colour):
-    logger.info(f"Censoring image with colour at {filepath}")
+def censor_colour_image(filepath, colour):
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
-        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
-        censor_colour(filepath, colour, output_path=censored_filepath)
-        logger.info(f"Image censored with colour successfully. Saved to {censored_filepath}")
-        return jsonify({'message': 'Image censored with colour', 'censored_image_path': censored_filepath}), 200
+        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored.jpg")
+        censor_colour(filepath, colour)
+        if os.path.exists(censored_filepath):
+            return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
+        else:
+            return jsonify({'error': 'Image censoring failed'}), 500
     except Exception as e:
-        logger.exception("Failed to censor image with colour")
         return jsonify({'error': str(e)}), 500
-
-
-def censor_colour(image_path, colour, classes=None, output_path=None):
-    if classes is None:
-        classes = []
-    detections = detector.detect(image_path)
-    face_classes = ['FACE_FEMALE', 'FACE_MALE']
-    only_face_classes = all(detection["class"] in face_classes for detection in detections)
-    if classes:
-        detections = [
-            detection for detection in detections if detection["class"] in classes
-        ]
-
-    img = cv2.imread(image_path)
-    for detection in detections:
-        c = detection["class"]
-        box = detection["box"]
-        x, y, w, h = box[0], box[1], box[2], box[3]
-        if not only_face_classes or c not in face_classes:
-            img[y: y + h, x: x + w] = colours[colour]
-
-    if output_path:
-        cv2.imwrite(output_path, img)
 
 
 def classify_image(filepath):
@@ -240,14 +219,10 @@ def log_message():
     is_nsfw = data.get('is_nsfw')
 
     try:
-        # Добавляем пользователя в общую таблицу
         user = User.query.get(user_id)
         if not user:
             user = User(user_id=user_id, group_id=group_id, username=username)
             db.session.add(user)
-            # db.session.commit()
-
-        # Обновляем статистику пользователя в группе
         group_stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id,
@@ -272,7 +247,6 @@ def log_message():
 
         db.session.commit()
 
-        # Логируем сообщение
         message_log = MessageLog(
             user_id=user_id,
             group_id=group_id,
@@ -294,21 +268,51 @@ def log_message():
 @app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
     try:
+        draw_plot(group_id)
+        draw_user_stats(user_id, group_id)
+        plot_top_users(group_id, 5)
         stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id
         ).first()
 
         if stats:
-            return jsonify({
-                'text_messages': stats.count_test_messages_sent,
-                'safe_photos': stats.count_safe_photos_sent,
-                'nsfw_photos': stats.count_nsfw_photos_sent
-            }), 200
+            return get_stats(user_id, group_id)
         else:
             return jsonify({'message': 'Статистика не найдена'}), 404
     except Exception as e:
         print(f"Ошибка при получении статистики: {e}")
+        return jsonify({'error': 'Ошибка сервера'}), 500
+
+
+@app.route('/group_stats/<group_id>')
+def get_group_stats(group_id):
+    try:
+        top_nsfw_users = (db.session.query(GroupStats)
+                          .filter(GroupStats.group_id == group_id)
+                          .order_by(GroupStats.count_nsfw_photos_sent.desc())
+                          .all())
+
+        top_active_users = (db.session.query(GroupStats)
+                            .filter(GroupStats.group_id == group_id)
+                            .order_by((GroupStats.count_test_messages_sent +
+                                       GroupStats.count_safe_photos_sent +
+                                       GroupStats.count_nsfw_photos_sent).desc())
+                            .all())
+
+        return jsonify({
+            'top_nsfw_users': [
+                {'user_id': stats.user_id, 'username': stats.username, 'nsfw_count': stats.count_nsfw_photos_sent} for
+                stats in top_nsfw_users],
+            'top_active_users': [{'user_id': stats.user_id, 'username': stats.username,
+                                  'total_messages': stats.count_test_messages_sent +
+                                                    stats.count_safe_photos_sent +
+                                                    stats.count_nsfw_photos_sent}
+                                 for stats in top_active_users]
+        }), 200
+
+    except Exception as e:
+        print(f"Ошибка при получении статистики группы: {e}")
         return jsonify({'error': 'Ошибка сервера'}), 500
 
 

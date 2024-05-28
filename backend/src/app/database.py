@@ -1,43 +1,16 @@
 import logging
-from datetime import datetime
 
-import matplotlib as plt
-from flask import request, jsonify
+from flask import request, jsonify, Flask
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
+import pandas as pd
 
 from data_create import db
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-# def create_group_id_tables(group_id):
-#     # Table for photos sent with timestamp to know when a photo is sent
-#     photo_table_name = f'group_{group_id}_photos_sent'
-#     if not db.engine.has_table(photo_table_name):
-#         class Photo(db.Model):
-#             __tablename__ = photo_table_name
-#             id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-#             user_id = db.Column(db.Integer, nullable=False)
-#             username = db.Column(db.String(80), nullable=False)
-#             group_id = db.Column(db.Integer, nullable=False)
-#             nsfw_photo = db.Column(db.Integer, nullable=False, default=0)  # 0 safe, 1 not safe
-#             timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-#
-#         db.create_all()
-#
-#     # Table for user statistics
-#     stats_table_name = f'group_{group_id}_user_stats'
-#     if not db.engine.has_table(stats_table_name):
-#         class UserStats(db.Model):
-#             __tablename__ = stats_table_name
-#             id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-#             user_id = db.Column(db.Integer, nullable=False)
-#             group_id = db.Column(db.Integer, nullable=False)
-#             count_safe_photos_sent = db.Column(db.Integer, nullable=False, default=0)
-#             count_nsfw_photos_sent = db.Column(db.Integer, nullable=False, default=0)
-#             count_messages_sent = db.Column(db.Integer, nullable=False, default=0)
-#
-#         db.create_all()
 
 class GroupStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -49,12 +22,6 @@ class GroupStats(db.Model):
     username = db.Column(db.Text, nullable=False)
 
     user = db.relationship('User', backref=db.backref('group_stats', lazy=True))
-
-    # def __repr__(self):
-    #     return f'<GroupStats {self.user_id} in group {self.group_id}>'
-
-
-# db.create_all()
 
 
 class MessageLog(db.Model):
@@ -68,12 +35,6 @@ class MessageLog(db.Model):
     username = db.Column(db.Text, nullable=False)
 
     user = db.relationship('User', backref=db.backref('message_logs', lazy=True))
-
-    # def __repr__(self):
-    #     return f'<MessageLog {self.id}>'
-
-
-# db.create_all()
 
 
 class User(db.Model):
@@ -128,20 +89,6 @@ def register_user():
     user_id = int(request_data['user_id'])
     username = request_data['username'].strip()
     group_id = int(request_data['group_id'])
-
-    # existing_user = User.query.filter_by(id=id_writing).first()
-    # existing_username = User.query.filter_by(username=username).first()
-
-    # Проверка на наличие пользователя с таким же ID или именем пользователя в базе данных
-    # if existing_user:
-    #     logger.error(f"ID {id_writing} already exists.")
-    #     return jsonify({'error': 'ID already exists'}), 409
-
-    # if existing_username:
-    #     logger.error(f"Username {username} already exists.")
-    #     return jsonify({'error': 'Username already exists'}), 409
-
-    # Если нет пользователя с таким же ID или именем пользователя, добавляем его в базу данных
     try:
         new_user = User(user_id=user_id, username=username, group_id=group_id)
         db.session.add(new_user)
@@ -177,11 +124,16 @@ def get_stats(user_id, group_id):
     ).first()
 
     if stats:
+        user = User.query.get(user_id)
         return jsonify({
+            'user_id': stats.user_id,
+            'username': stats.username,
             'text_messages': stats.count_test_messages_sent,
             'safe_photos': stats.count_safe_photos_sent,
             'nsfw_photos': stats.count_nsfw_photos_sent,
-            'graph_url': f'../backend/src/app/uploads/user_activity_{group_id}.png'
+            'graph_url': f'../backend/src/app/uploads/user_activity_{group_id}.png',
+            'nsfw_url': f'../backend/src/app/uploads/nsfw_frequency_{user_id}.png',
+            'top_users_url': f'../backend/src/app/uploads/top_users_{group_id}.png'
         }), 200
 
 
@@ -192,7 +144,6 @@ def draw_plot(group_id):
 
     dates = [msg.timestamp.date() for msg in messages]
     counts = [dates.count(date) for date in dates]
-
     plt.figure(figsize=(10, 5))
     plt.bar(dates, counts)
     plt.xlabel('Дата')
@@ -204,4 +155,39 @@ def draw_plot(group_id):
     plt.close()
 
 
+def draw_user_stats(user_id, group_id):
+    stats = GroupStats.query.filter_by(user_id=user_id, group_id=group_id).first()
+    labels = ['Приличные фото', 'Неприличные фото']
+    counts = [stats.count_safe_photos_sent, stats.count_nsfw_photos_sent]
+    plt.figure(figsize=(10, 5))
+    bars = plt.bar(labels, counts, color=['green', 'red'])
+    plt.xlabel(f'Категории')
+    plt.ylabel('Количество фото')
+    plt.title(f'Пользователь {user_id}')
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, height,
+                 f'{height:.0f}', ha='center', va='bottom')
+    plt.tight_layout()
+    plt.savefig(f'uploads/nsfw_frequency_{user_id}.png')
+    plt.close()
 
+
+def plot_top_users(group_id, top_n):
+    top_users = (
+        db.session.query(GroupStats.username, GroupStats.count_test_messages_sent)
+        .filter_by(group_id=group_id)
+        .order_by(GroupStats.count_test_messages_sent.desc())
+        .limit(top_n)
+        .all()
+    )
+    usernames = [user[0] for user in top_users]
+    message_counts = [user[1] for user in top_users]
+    plt.figure(figsize=(10, 5))
+    plt.barh(usernames, message_counts)  # Горизонтальный bar chart
+    plt.xlabel('Количество сообщений')
+    plt.ylabel('Пользователи')
+    plt.title(f'Топ-{top_n} самых активных пользователей')
+    plt.tight_layout()
+    plt.savefig(f'uploads/top_users_{group_id}.png')
+    plt.close()

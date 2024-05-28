@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from trybot import handle_photo, colour
+from telegrambot.trybot import handle_photo, colour
 
 
-@patch('trybot.bot')
-@patch('trybot.censor_colour')
-@patch('trybot.os')
+@patch('telegrambot.trybot.bot')
+@patch('telegrambot.trybot.censor_colour')
+@patch('telegrambot.trybot.os')
 class TestOs(unittest.TestCase):
 
     def test_colour(self, mock_os, mock_censor_colour, mock_bot):
