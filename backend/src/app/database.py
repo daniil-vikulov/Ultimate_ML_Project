@@ -1,10 +1,10 @@
 import logging
+from datetime import datetime
 
-from flask import request, jsonify, Flask
-from matplotlib import pyplot as plt
+import matplotlib as plt
+from flask import request, jsonify
 
 from data_create import db
-from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

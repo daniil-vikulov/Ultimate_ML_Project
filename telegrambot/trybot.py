@@ -1,15 +1,13 @@
 import datetime
-import os
-import time
 import sqlite3
+import time
 
 import requests
 import telebot
 from nudenet.nudenet import NudeDetector
-from token_bot import bot
-import time
 
-# Добавьте задержку перед подключением
+from token_bot import bot
+
 time.sleep(10)
 detector = NudeDetector()
 server_url = 'http://server:5000'
@@ -31,7 +29,7 @@ def handle_start(message):
     """handles /start command sent in a supergroup or in a personal chat with bot"""
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Привет всем! Этот бот будет следить за порядком в чате\n'
-                         f'Нельзя слать неприличные фото, за это бан')
+                                          f'Нельзя слать неприличные фото, за это бан')
     else:
         bot.send_message(message.chat.id,
                          f'Привет, {message.from_user.first_name}! '
@@ -121,21 +119,21 @@ def handle_stats(message):
         cursor.execute("SELECT COUNT(*) FROM nsfw_content_sent WHERE user_id = ?", (message.from_user.id,))
         count = cursor.fetchone()[0]
         connection.commit()
-        nest_mute_min = 1
         if count == 10:
-            bot.send_message(message.chat.id, f'За следующее неприличное фото в чате пользователь {message.from_user.first_name}'
-                                              f' {message.from_user.last_name} будет кикнут')
-        elif count >= 0 and count <= 2:
+            bot.send_message(message.chat.id,
+                             f'За следующее неприличное фото в чате пользователь {message.from_user.first_name}'
+                             f' {message.from_user.last_name} будет кикнут')
+        elif 0 <= count <= 2:
             next_mute_min = 1
             bot.send_message(message.chat.id,
                              f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
                              f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минуту')
-        elif count >= 3 and count <= 6:
+        elif 3 <= count <= 6:
             next_mute_min = 5
             bot.send_message(message.chat.id,
                              f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
                              f'отправил {count} неприличных фото, за следующее - бан на {next_mute_min} минут')
-        elif count >= 7 and count <= 9:
+        elif 7 <= count <= 9:
             next_mute_min = 60
             bot.send_message(message.chat.id,
                              f'Пользователь {message.from_user.first_name} {message.from_user.last_name} '
@@ -184,7 +182,7 @@ def handle_photo(message):
             if not detected_parts or only_face_classes:
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
-                os.remove(file_name)
+                # os.remove(file_name)
             else:  # nsfw content sent to a supergroup
                 try:
                     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -209,16 +207,17 @@ def handle_photo(message):
                     answer = response.json()
                     censored = answer.get('censored_image_path')
                     if censored:
-                # censored = detector.censor(f'image_{image_cnt}.jpg')
+                        # censored = detector.censor(f'image_{image_cnt}.jpg')
                         with open(censored, 'rb') as c:
                             bot.delete_message(message.chat.id, message.id)
                             bot.send_photo(message.chat.id, c)  # отправили заблюренное фото
                             # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
                             user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
                             if user_role == 'administrator' or user_role == 'creator':
-                                bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
-                                                                  " за отправление "
-                                                                  "нецензурного контента:(")
+                                bot.send_message(message.chat.id,
+                                                 "нельзя замутить/кикнуть администратора/создателя группы"
+                                                 " за отправление "
+                                                 "нецензурного контента:(")
                             else:
                                 try:
                                     mute_seconds = 60
@@ -230,12 +229,13 @@ def handle_photo(message):
                                         bot.kick_chat_member(message.chat.id, message.from_user.id)
                                         return
                                     mute_until = time.time() + mute_seconds
-                                    bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
+                                    bot.restrict_chat_member(message.chat.id, message.from_user.id,
+                                                             until_date=int(mute_until))
                                 except Exception as e:
                                     print(f'Ошибка {e}')
-                        os.remove(censored)
+                        # os.remove(censored)
                         original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
-                        os.remove(original)
+                        # os.remove(original)
                     # image_cnt += 1
                     else:
                         bot.send_message(message.chat.id, "Заблюренное фото не найдено:(")
@@ -280,7 +280,7 @@ def next_img(call):
         try:
             if call.message:
                 name = call.data.split(':')[1]
-                os.remove(name)
+                # os.remove(name)
                 bot.send_message(call.message.chat.id, "отправьте следующее фото:)")
         except Exception as e:
             print(f'error {e}')
@@ -315,25 +315,34 @@ def next_img(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
-    """handles user's choice of colour to blur the picture (for personal chats)"""
+    """Handles user's choice of colour to blur the picture (for personal chats)"""
     if call.message:
         file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]
-        url_censor_colour = f'{server_url}/censor_colour?colour={chosen_colour}'
-        files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
-        response = requests.post(url_censor_colour, files=files)
-        files['file'][1].close()
+        url_censor_colour = f'{server_url}/censor_colour'
+
+        with open(file_name, 'rb') as image_file:
+            files = {'file': (file_name, image_file, 'image/jpeg')}
+            data = {'colour': chosen_colour}
+
+            response = requests.post(url_censor_colour, files=files, data=data)
+
+        # Проверяем статус ответа
         if response.status_code == 200:
             try:
                 result = response.json()
-                censored = os.path.join('../backend/src/app', result.get('censored_image_path'))
-                if censored:
-                    with open(censored, 'rb') as c:
-                        bot.send_photo(call.message.chat.id, c)
+                censored_image_path = result.get('censored_image_path')
+
+                if censored_image_path:
+                    censored_full_path = censored_image_path
+                    with open(censored_full_path, 'rb') as censored_file:
+                        bot.send_photo(call.message.chat.id, censored_file)
                 else:
                     print('Заблюренный файл не найден')
             except Exception as e:
-                print(f'{e}')
+                print(f'Ошибка при обработке ответа')
+        else:
+            print(f'Ошибка запроса: {response.status_code} - {response.text}')
 
 
 bot.polling(none_stop=True)

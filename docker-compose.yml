@@ -31,13 +31,13 @@ services:
       context: ./telegrambot
     restart: always
     volumes:
-      - ./backend/src/app/uploads:/app/uploads
+      - ./backend/src/app/uploads:/telegrambot/uploads
     networks:
       - app-network
     depends_on:
       - server
     environment:
-      SERVER_URL: http://server:5000 # URL вашего сервера внутри сети Docker
+      SERVER_URL: http://server:5000
 
 volumes:
   postgres_data:
