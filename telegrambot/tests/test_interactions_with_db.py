@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from trybot import handle_stats
+from telegrambot.trybot import handle_stats
+# TODO
 
 
-@patch('trybot.bot')
-@patch('trybot.cursor')
+@patch('telegrambot.trybot.bot')
+@patch('telegrambot.trybot.cursor')
 class TestInteractionsWithDb(unittest.TestCase):
     def test_handle_stats(self, mock_cursor, mock_bot):
         """tests the work of /stats command"""
