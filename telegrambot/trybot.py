@@ -1,14 +1,9 @@
-import datetime
-import os
 import time
-import sqlite3
 
 import requests
 import telebot
-from nudenet.nudenet import NudeDetector
-from telegrambot.token_bot import bot
-import time
-from telegrambot.censor import censor_colour
+
+from token_bot import bot
 
 server_url = 'http://127.0.0.1:5000'
 
@@ -18,7 +13,7 @@ def handle_start(message):
     """handles /start command sent in a supergroup or in a personal chat with bot"""
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Привет всем! Этот бот будет следить за порядком в чате\n'
-                         f'Нельзя слать неприличные фото, за это бан')
+                                          f'Нельзя слать неприличные фото, за это бан')
     else:
         bot.send_message(message.chat.id,
                          f'Привет, {message.from_user.first_name}! '
@@ -110,9 +105,9 @@ def handle_stats(message):
         user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
         try:
             if user_role == 'administrator' or user_role == 'creator':
-                response = requests.get(f'http://127.0.0.1:5000/group_stats/{group_id}')
+                response = requests.get(f'{server_url}/group_stats/{group_id}')
             else:
-                response = requests.get(f'http://127.0.0.1:5000/stats/{group_id}/{user_id}')
+                response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
             response.raise_for_status()  # Проверка на ошибки HTTP
             stats = response.json()
             # bot.reply_to(message, f"Ваша статистика:\n{stats}")
@@ -150,7 +145,7 @@ def handle_plots(message):
     group_id = message.chat.id
     user_id = message.from_user.id
     try:
-        response = requests.get(f'http://127.0.0.1:5000/stats/{group_id}/{user_id}')
+        response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
         response.raise_for_status()
         urls = response.json()
 
@@ -220,14 +215,14 @@ def handle_photo(message):
                         'is_text': is_text,
                         'is_nsfw': is_nsfw
                     }
-                    response = requests.post(f'http://127.0.0.1:5000/message', json=data)
+                    response = requests.post(f'{server_url}/message', json=data)
                     if response.status_code != 201:
                         print(f'server error {response.text}')
                 except requests.exceptions.RequestException as e:
                     print(f"Ошибка при отправке данных на сервер: {e}")
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
-                os.remove(file_name)
+                # os.remove(file_name)
             else:  # nsfw content sent to a supergroup
                 is_nsfw = 1
                 try:
@@ -239,7 +234,7 @@ def handle_photo(message):
                         'is_text': is_text,
                         'is_nsfw': is_nsfw
                     }
-                    response = requests.post(f'http://127.0.0.1:5000/message', json=data)
+                    response = requests.post(f'{server_url}/message', json=data)
                     if response.status_code != 201:
                         print(f'server error {response.text}')
                 except requests.exceptions.RequestException as e:
@@ -264,12 +259,13 @@ def handle_photo(message):
                             # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
                             user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
                             if user_role == 'administrator' or user_role == 'creator':
-                                bot.send_message(message.chat.id, "нельзя замутить/кикнуть администратора/создателя группы"
-                                                                  " за отправление "
-                                                                  "нецензурного контента:(")
+                                bot.send_message(message.chat.id,
+                                                 "нельзя замутить/кикнуть администратора/создателя группы"
+                                                 " за отправление "
+                                                 "нецензурного контента:(")
                             else:
                                 try:
-                                    response = requests.get(f'http://127.0.0.1:5000/stats/{group_id}/{user_id}')
+                                    response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
                                     response.raise_for_status()  # Проверка на ошибки HTTP
                                     info = response.json()
                                     count = info.get('count_nsfw_photos_sent')
@@ -282,12 +278,13 @@ def handle_photo(message):
                                         mute_seconds = 3600
                                         return
                                     mute_until = time.time() + mute_seconds
-                                    bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=int(mute_until))
+                                    bot.restrict_chat_member(message.chat.id, message.from_user.id,
+                                                             until_date=int(mute_until))
                                 except Exception as e:
                                     print(f'Ошибка {e}')
-                        os.remove(censored)
+                        # os.remove(censored)
                         original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
-                        os.remove(original)
+                        # os.remove(original)
                     # image_cnt += 1
                     else:
                         bot.send_message(message.chat.id, "Заблюренное фото не найдено:(")
@@ -356,7 +353,7 @@ def next_img(call):
         try:
             if call.message:
                 name = call.data.split(':')[1]
-                os.remove(name)
+                # os.remove(name)
                 bot.send_message(call.message.chat.id, "отправьте следующее фото:)")
         except Exception as e:
             print(f'error {e}')
@@ -364,52 +361,34 @@ def next_img(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
+    """Handles user's choice of colour to blur the picture (for personal chats)"""
     if call.message:
         file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]
+        url_censor_colour = f'{server_url}/censor_colour'
 
-        if chosen_colour == "black":
-            censored = censor_colour(file_name, "black")
-        if chosen_colour == "white":
-            censored = censor_colour(file_name, "white")
-        if chosen_colour == "blue":
-            censored = censor_colour(file_name, "blue")
-        if chosen_colour == "red":
-            censored = censor_colour(file_name, "red")
-        if chosen_colour == "green":
-            censored = censor_colour(file_name, "green")
-        if chosen_colour == "orange":
-            censored = censor_colour(file_name, "orange")
-        if chosen_colour == "violet":
-            censored = censor_colour(file_name, "violet")
-        with open(censored, 'rb') as c:
-            bot.send_photo(call.message.chat.id, c)
-        os.remove(censored)
-        original = censored.split('_')[0] + '_' + censored.split('_')[1] + '.jpg'
-        os.remove(original)
+        with open(file_name, 'rb') as image_file:
+            files = {'file': (file_name, image_file, 'image/jpeg')}
+            data = {'colour': chosen_colour}
 
+            response = requests.post(url_censor_colour, files=files, data=data)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
-def colour(call):
-    """handles user's choice of colour to blur the picture (for personal chats)"""
-    if call.message:
-        file_name = call.data.split(':')[2]
-        chosen_colour = call.data.split(':')[1]
-        url_censor_colour = f'{server_url}/censor_colour?colour={chosen_colour}'
-        files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
-        response = requests.post(url_censor_colour, files=files)
-        files['file'][1].close()
+        # Проверяем статус ответа
         if response.status_code == 200:
             try:
                 result = response.json()
-                censored = os.path.join('../backend/src/app', result.get('censored_image_path'))
-                if censored:
-                    with open(censored, 'rb') as c:
-                        bot.send_photo(call.message.chat.id, c)
+                censored_image_path = result.get('censored_image_path')
+
+                if censored_image_path:
+                    censored_full_path = censored_image_path
+                    with open(censored_full_path, 'rb') as censored_file:
+                        bot.send_photo(call.message.chat.id, censored_file)
                 else:
                     print('Заблюренный файл не найден')
             except Exception as e:
-                print(f'{e}')
+                print(f'Ошибка при обработке ответа')
+        else:
+            print(f'Ошибка запроса: {response.status_code} - {response.text}')
 
 
 bot.polling(none_stop=True)

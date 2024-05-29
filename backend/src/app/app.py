@@ -1,16 +1,16 @@
 import logging
 import os
 
+import cv2
 from PIL import Image
 from flask import Flask, request, jsonify
-import nudenet
-from nudenet import NudeClassifier
+from nudenet.classifier import Classifier as NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
 import data_create
 import database
-from telegrambot.censor import censor_colour
+from colours import colours
 from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users
 from data_create import db
 from datetime import datetime
@@ -29,7 +29,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'group_stats'}
+ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'censor_colour'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 data_create.init_app(app)
@@ -129,10 +129,10 @@ def process_image_file(filepath, action):
         elif action == 'detect':
             return detect_image(filepath)
         elif action == 'censor_colour':
-            colour = request.args.get('colour')
+            colour = request.form.get('colour')
             if not colour:
-                return jsonify({'error': 'Missing colour parameter'}), 400
-            return censor_colour_image(filepath, colour=colour)
+                return jsonify({'error': 'Colour is required for censor_colour action'}), 400
+            return censor_image_with_colour(filepath, colour)
     except Exception as e:
         logger.exception("Error processing image")
         return jsonify({'error': str(e)}), 500
@@ -148,7 +148,7 @@ def censor_image(filepath):
     logger.info(f"Censoring image at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
-        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored.jpg")
+        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
         detector.censor(filepath)
         logger.info(f"Image censored successfully. Saved to {censored_filepath}")
         return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
@@ -157,16 +157,39 @@ def censor_image(filepath):
         return jsonify({'error': str(e)}), 500
 
 
-def censor_colour_image(filepath, colour):
+def censor_colour(image_path, colour, classes=None, output_path=None):
+    if classes is None:
+        classes = []
+    detections = detector.detect(image_path)
+    face_classes = ['FACE_FEMALE', 'FACE_MALE']
+    only_face_classes = all(detection["class"] in face_classes for detection in detections)
+    if classes:
+        detections = [
+            detection for detection in detections if detection["class"] in classes
+        ]
+
+    img = cv2.imread(image_path)
+    for detection in detections:
+        c = detection["class"]
+        box = detection["box"]
+        x, y, w, h = box[0], box[1], box[2], box[3]
+        if not only_face_classes or c not in face_classes:
+            img[y: y + h, x: x + w] = colours[colour]
+
+    if output_path:
+        cv2.imwrite(output_path, img)
+
+
+def censor_image_with_colour(filepath, colour):
+    logger.info(f"Censoring image with colour at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
-        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored.jpg")
-        censor_colour(filepath, colour)
-        if os.path.exists(censored_filepath):
-            return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
-        else:
-            return jsonify({'error': 'Image censoring failed'}), 500
+        censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
+        censor_colour(filepath, colour, output_path=censored_filepath)
+        logger.info(f"Image censored with colour successfully. Saved to {censored_filepath}")
+        return jsonify({'message': 'Image censored with colour', 'censored_image_path': censored_filepath}), 200
     except Exception as e:
+        logger.exception("Failed to censor image with colour")
         return jsonify({'error': str(e)}), 500
 
 
