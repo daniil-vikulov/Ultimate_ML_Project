@@ -1,12 +1,11 @@
 import logging
+from datetime import timedelta
 
-from flask import request, jsonify, Flask
-from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
-import pandas as pd
+from flask import request, jsonify
+from matplotlib import pyplot as plt
 
 from data_create import db
-from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +19,6 @@ class GroupStats(db.Model):
     count_safe_photos_sent = db.Column(db.Integer, default=0, nullable=False)
     count_nsfw_photos_sent = db.Column(db.Integer, default=0, nullable=False)
     username = db.Column(db.Text, nullable=False)
-
     user = db.relationship('User', backref=db.backref('group_stats', lazy=True))
 
 
@@ -31,9 +29,8 @@ class MessageLog(db.Model):
     message = db.Column(db.Text)
     is_text = db.Column(db.Boolean, default=False)
     is_nsfw = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     username = db.Column(db.Text, nullable=False)
-
     user = db.relationship('User', backref=db.backref('message_logs', lazy=True))
 
 
@@ -122,20 +119,18 @@ def get_stats(user_id, group_id):
         user_id=user_id,
         group_id=group_id
     ).first()
-
     if stats:
-        user = User.query.get(user_id)
-        return jsonify({
+        return {
             'user_id': stats.user_id,
             'username': stats.username,
             'text_messages': stats.count_test_messages_sent,
             'safe_photos': stats.count_safe_photos_sent,
             'nsfw_photos': stats.count_nsfw_photos_sent,
-            'graph_url': f'../backend/src/app/uploads/user_activity_{group_id}.png',
-            'nsfw_url': f'../backend/src/app/uploads/nsfw_frequency_{group_id}.png',
-            'top_users_url': f'../backend/src/app/uploads/top_users_{group_id}.png',
-            'nsfw_stats_graph': f'../backend/src/app/uploads/nsfw_activity_{group_id}.png'
-        }), 200
+            'graph_url': f'uploads/user_activity_{group_id}.png',
+            'nsfw_url': f'uploads/nsfw_frequency_{group_id}.png',
+            'top_users_url': f'uploads/top_users_{group_id}.png',
+            'nsfw_stats_graph': f'uploads/nsfw_activity_{group_id}.png'
+        }, 200
 
 
 def draw_plot(group_id):

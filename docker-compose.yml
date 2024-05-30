@@ -1,26 +1,13 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:13
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   server:
     build:
       context: ./backend
     restart: always
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: postgresql://user:password@db:5432/mydatabase
     volumes:
       - ./backend/src/app/uploads:/app/uploads
+      - ./backend/src/app:/app
     networks:
       - app-network
     ports:
@@ -38,9 +25,6 @@ services:
       - server
     environment:
       SERVER_URL: http://server:5000
-
-volumes:
-  postgres_data:
 
 networks:
   app-network:

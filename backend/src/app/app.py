@@ -9,18 +9,9 @@ from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
 import data_create
-import database
 from colours import colours
-from database import User, GroupStats, MessageLog, get_stats, \
-    draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
 from data_create import db
-from datetime import datetime
-
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# project_root = os.path.join(current_dir, '../../../')
-#
-# # Добавление корневой директории в sys.path
-# sys.path.append(project_root)
+from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +21,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-ALLOWED_ACTIONS = {'censor', 'classify', 'detect', 'register', 'login', 'stats', 'censor_colour'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 data_create.init_app(app)
@@ -65,20 +55,6 @@ def upload_file(action):
     :errors: 400: Returned if the specified action is not supported, no file is provided, a file with no name is selected,
      the file type is not allowed, or the uploaded file is not a valid image.
     """
-    if action not in ALLOWED_ACTIONS:
-        logger.error("Invalid action")
-        return jsonify({'error': 'Invalid action'}), 400
-
-    if action == 'register':
-        return database.register_user()
-
-    if action == 'stats':
-        return database.get_stats()
-
-    if action == 'login':
-        return database.login_user()
-
-        # Check if there's a file part in the request
     if 'file' not in request.files:
         logger.error("No file part in request")
         return jsonify({'error': 'No file part'}), 400
@@ -280,7 +256,6 @@ def log_message():
             is_nsfw=is_nsfw
         )
         db.session.add(message_log)
-        # db.session.add(group_stats)
         db.session.commit()
 
         return jsonify({'message': 'Данные сохранены'}), 201

@@ -16,11 +16,13 @@ def init_app(app):
 
 
 def check_and_create_db(app):
-    db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-    if not os.path.exists(db_path):
-        db.create_all()
-        logger.info("Database is created")
+    db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    if 'sqlite' in db_uri:
+        db_path = db_uri.replace('sqlite:///', '')
+        if not os.path.exists(db_path):
+            db.create_all()
+            print("Database is created")
+        else:
+            print("Database already exists")
     else:
-        # os.remove(db_path)
-        # db.create_all()
-        logger.info("Database already exists")
+        print("Using non-SQLite database. No need to check file existence.")

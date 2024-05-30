@@ -6,7 +6,7 @@ import telebot
 
 from token_bot import bot
 
-server_url = 'http://127.0.0.1:5000'
+server_url = 'http://server:5000'
 
 
 @bot.message_handler(commands=['start'])
@@ -339,7 +339,7 @@ def process_message(message):
             'is_text': is_text,
             'is_nsfw': is_nsfw
         }
-        response = requests.post(f'http://127.0.0.1:5000/message', json=data)
+        response = requests.post(f'{server_url}/message', json=data)
         if response.status_code != 201:
             print(f'server error {response.text}')
     except requests.exceptions.RequestException as e:
