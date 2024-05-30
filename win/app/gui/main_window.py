@@ -1,4 +1,5 @@
 from PyQt5 import QtCore
+from PyQt5.QtCore import QTimer
 
 from win.app.back.background_task import LoopThread
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QSystemTrayIcon, QMenu, QVBoxLayout, QWidget
@@ -31,11 +32,19 @@ class MainWindow(QMainWindow):
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(self.icon)
 
-        quit_action = QMenu("Exit")
-        quit_action.addAction("Exit", QApplication.instance().quit)
-        self.tray_icon.setContextMenu(quit_action)
+        tray_menu = QMenu(self)
+        quit_action = tray_menu.addAction("Exit")
+        show_action = tray_menu.addAction("Show")
+        quit_action.triggered.connect(QApplication.instance().quit)
+        show_action.triggered.connect(self.show_main_window)
 
+        self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
+
+    def show_main_window(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
     def add_widgets(self):
         central_widget = QWidget(self)
@@ -63,10 +72,16 @@ class MainWindow(QMainWindow):
             self.thread.stop_loop()
             self.canvas.close()
 
+    def send_notification(self, title, message):
+        self.tray_icon.show()
+        QTimer.singleShot(100, lambda: self.tray_icon.showMessage(title, message, QSystemTrayIcon.Information,
+                                                                  2000))
+
     def closeEvent(self, event):
         if self.button.text() == 'Stop':
             event.ignore()
             self.hide()
+            self.send_notification("BabyGuard", "Running in background. Use tray icon to exit.")
         else:
             self.canvas.close()
             event.accept()
