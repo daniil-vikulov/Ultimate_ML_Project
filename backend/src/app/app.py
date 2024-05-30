@@ -11,7 +11,8 @@ from werkzeug.utils import secure_filename
 import data_create
 import database
 from colours import colours
-from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users
+from database import User, GroupStats, MessageLog, get_stats, \
+    draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
 from data_create import db
 from datetime import datetime
 
@@ -292,8 +293,9 @@ def log_message():
 def get_user_stats(group_id, user_id):
     try:
         draw_plot(group_id)
-        draw_user_stats(user_id, group_id)
-        plot_top_users(group_id, 5)
+        draw_nsfw_plot(group_id)
+        draw_user_stats(group_id)
+        plot_top_users(group_id)
         stats = GroupStats.query.filter_by(
             user_id=user_id,
             group_id=group_id

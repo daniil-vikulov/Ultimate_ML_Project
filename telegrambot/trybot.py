@@ -1,3 +1,4 @@
+import os
 import time
 
 import requests
@@ -114,14 +115,14 @@ def handle_stats(message):
             if user_role == 'administrator' or user_role == 'creator':
                 text = "Статистика группы:\n\n"
 
-                text += "**Топ пользователей по NSFW-контенту:**\n"
+                text += "Топ пользователей по NSFW-контенту:\n"
                 for user_data in stats.get('top_nsfw_users', []):
                     text += f"- @{user_data['username']} ({user_data['nsfw_count']} NSFW)\n"
 
-                text += "\n**Топ самых активных пользователей:**\n"
+                text += "\nТоп самых активных пользователей:\n"
                 for user_data in stats.get('top_active_users', []):
                     text += f"- @{user_data['username']} ({user_data['total_messages']} сообщений)\n"
-                bot.reply_to(message, text, parse_mode='Markdown')
+                bot.reply_to(message, text)
             else:
                 stats_text = (
                     f"Ваша статистика:\n"
@@ -152,20 +153,18 @@ def handle_plots(message):
         if urls.get('graph_url'):
             with open(urls.get('graph_url'), 'rb') as g:
                 bot.send_photo(message.chat.id, g)
-        else:
-            bot.reply_to(message, "График активности пользователей недоступен.")
 
         if urls.get('nsfw_url'):
             with open(urls.get('nsfw_url'), 'rb') as n:
                 bot.send_photo(message.chat.id, n)
-        else:
-            bot.reply_to(message, "График NSFW статистики недоступен.")
 
         if urls.get('top_users_url'):
             with open(urls.get('top_users_url'), 'rb') as t:
                 bot.send_photo(message.chat.id, t)
-        else:
-            bot.reply_to(message, "График top пользователей недоступен.")
+
+        if urls.get('nsfw_stats_graph'):
+            with open(urls.get('nsfw_stats_graph'), 'rb') as x:
+                bot.send_photo(message.chat.id, x)
 
     except requests.exceptions.RequestException as e:
         print(f"Ошибка при получении графиков: {e}")
@@ -222,7 +221,7 @@ def handle_photo(message):
                     print(f"Ошибка при отправке данных на сервер: {e}")
                 bot.send_message(message.chat.id,
                                  "ура ура! фото приличное:)")
-                # os.remove(file_name)
+                os.remove(file_name)
             else:  # nsfw content sent to a supergroup
                 is_nsfw = 1
                 try:
@@ -250,7 +249,10 @@ def handle_photo(message):
                 files['file'][1].close()
                 if response.status_code == 200:
                     answer = response.json()
+                    # print(answer)
                     censored = answer.get('censored_image_path')
+                    # censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
+                    # print(censored)
                     if censored:
                         # censored = detector.censor(f'image_{image_cnt}.jpg')
                         with open(censored, 'rb') as c:

@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 import pandas as pd
 
 from data_create import db
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -132,8 +132,9 @@ def get_stats(user_id, group_id):
             'safe_photos': stats.count_safe_photos_sent,
             'nsfw_photos': stats.count_nsfw_photos_sent,
             'graph_url': f'../backend/src/app/uploads/user_activity_{group_id}.png',
-            'nsfw_url': f'../backend/src/app/uploads/nsfw_frequency_{user_id}.png',
-            'top_users_url': f'../backend/src/app/uploads/top_users_{group_id}.png'
+            'nsfw_url': f'../backend/src/app/uploads/nsfw_frequency_{group_id}.png',
+            'top_users_url': f'../backend/src/app/uploads/top_users_{group_id}.png',
+            'nsfw_stats_graph': f'../backend/src/app/uploads/nsfw_activity_{group_id}.png'
         }), 200
 
 
@@ -142,52 +143,172 @@ def draw_plot(group_id):
                 .order_by(MessageLog.timestamp.asc())
                 .all())
 
-    dates = [msg.timestamp.date() for msg in messages]
-    counts = [dates.count(date) for date in dates]
-    plt.figure(figsize=(10, 5))
-    plt.bar(dates, counts)
-    plt.xlabel('Дата')
-    plt.ylabel('Количество сообщений')
-    plt.title('Активность пользователей в группе')
-    plt.xticks(rotation=45)
+    if not messages:
+        print(f"No messages found for group {group_id}")
+        return
+    timestamps = {}
+    start_time = messages[0].timestamp.replace(minute=0, second=0, microsecond=0)
+    end_time = messages[-1].timestamp.replace(minute=0, second=0, microsecond=0) + timedelta(hours=3)
+    current_time = start_time
+
+    while current_time <= end_time:
+        timestamps[current_time] = 0
+        current_time += timedelta(hours=3)
+    for msg in messages:
+        msg_time = msg.timestamp.replace(minute=0, second=0, microsecond=0)
+        for time in timestamps:
+            if msg_time <= time:
+                timestamps[time] += 1
+    dates = list(timestamps.keys())
+    counts = list(timestamps.values())
+    plt.figure(figsize=(12, 6))
+    plt.plot(dates, counts, marker='o', linestyle='-', color='#1f77b4', linewidth=2, markersize=6)
+
+    for i, (date, count) in enumerate(zip(dates, counts)):
+        if i == 0 or counts[i] != counts[i - 1]:
+            plt.text(date, count, str(count), fontsize=10, ha='right', va='bottom', color='#1f77b4', fontweight='bold')
+
+    plt.xlabel('Дата', fontweight='bold', fontsize=12)
+    plt.ylabel('Количество сообщений', fontweight='bold', fontsize=12)
+    plt.title('Активность пользователей в группе', fontsize=14, fontweight='bold')
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+    plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=3))
+    plt.gca().xaxis.set_minor_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gcf().autofmt_xdate()
+    plt.style.use('ggplot')
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.grid(True, linestyle='--', alpha=0.7)
+    ax.xaxis.grid(True, which='major', linestyle='--', alpha=0.7)
+    ax.xaxis.grid(True, which='minor', linestyle=':', alpha=0.4)
+    ax.set_facecolor('#f9f9f9')
     plt.tight_layout()
     plt.savefig(f'uploads/user_activity_{group_id}.png')
     plt.close()
 
 
-def draw_user_stats(user_id, group_id):
-    stats = GroupStats.query.filter_by(user_id=user_id, group_id=group_id).first()
-    labels = ['Приличные фото', 'Неприличные фото']
-    counts = [stats.count_safe_photos_sent, stats.count_nsfw_photos_sent]
-    plt.figure(figsize=(10, 5))
-    bars = plt.bar(labels, counts, color=['green', 'red'])
-    plt.xlabel(f'Категории')
-    plt.ylabel('Количество фото')
-    plt.title(f'Пользователь {user_id}')
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width() / 2, height,
-                 f'{height:.0f}', ha='center', va='bottom')
+def draw_nsfw_plot(group_id):
+    messages = (MessageLog.query.filter_by(group_id=group_id, is_nsfw=True)
+                .order_by(MessageLog.timestamp.asc())
+                .all())
+
+    timestamps = {}
+    start_time = messages[0].timestamp.replace(minute=0, second=0, microsecond=0)
+    end_time = messages[-1].timestamp.replace(minute=0, second=0, microsecond=0) + timedelta(hours=3)
+    current_time = start_time
+
+    while current_time <= end_time:
+        timestamps[current_time] = 0
+        current_time += timedelta(hours=3)
+
+    for msg in messages:
+        msg_time = msg.timestamp.replace(minute=0, second=0, microsecond=0)
+        for time in timestamps:
+            if msg_time <= time:
+                timestamps[time] += 1
+    dates = list(timestamps.keys())
+    counts = list(timestamps.values())
+    plt.figure(figsize=(12, 6))
+    plt.plot(dates, counts, marker='o', linestyle='-', color='#ff6347', linewidth=2, markersize=6)
+    for i, (date, count) in enumerate(zip(dates, counts)):
+        if i == 0 or counts[i] != counts[i - 1]:
+            plt.text(date, count, str(count), fontsize=10, ha='right', va='bottom', color='#ff6347', fontweight='bold')
+    plt.xlabel('Дата', fontweight='bold', fontsize=12)
+    plt.ylabel('Количество NSFW фото', fontweight='bold', fontsize=12)
+    plt.title('Активность пользователей в группе (NSFW фото)', fontsize=14, fontweight='bold')
+
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+    plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=3))
+    plt.gca().xaxis.set_minor_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gcf().autofmt_xdate()
+    plt.style.use('ggplot')
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.yaxis.grid(True, linestyle='--', alpha=0.7)
+    ax.xaxis.grid(True, which='major', linestyle='--', alpha=0.7)
+    ax.xaxis.grid(True, which='minor', linestyle=':', alpha=0.4)
+    ax.set_facecolor('#f9f9f9')
     plt.tight_layout()
-    plt.savefig(f'uploads/nsfw_frequency_{user_id}.png')
+    plt.savefig(f'uploads/nsfw_activity_{group_id}.png')
     plt.close()
 
 
-def plot_top_users(group_id, top_n):
+def draw_user_stats(group_id):
+    stats = GroupStats.query.filter_by(group_id=group_id).all()
+
+    usernames = [stat.username for stat in stats]
+    safe_counts = [stat.count_safe_photos_sent for stat in stats]
+    nsfw_counts = [stat.count_nsfw_photos_sent for stat in stats]
+
+    x = range(len(usernames))
+    width = 0.4
+
+    plt.figure(figsize=(12, 6))
+
+    bars_safe = plt.bar(x, safe_counts, width=width, color='green', align='center', label='Приличные фото')
+    bars_nsfw = plt.bar([i + width for i in x], nsfw_counts, width=width, color='red', align='center',
+                        label='Неприличные фото')
+
+    plt.xlabel('Пользователи', fontweight='bold', fontsize=12)
+    plt.ylabel('Количество фото', fontweight='bold', fontsize=12)
+    plt.title('Количество приличных и неприличных фото по пользователям', fontsize=14, fontweight='bold')
+
+    plt.xticks([i + width / 2 for i in x], usernames, rotation=45, ha='right')
+
+    for bar in bars_safe:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.0f}', ha='center', va='bottom', color='green',
+                 fontweight='bold')
+
+    for bar in bars_nsfw:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.0f}', ha='center', va='bottom', color='red',
+                 fontweight='bold')
+
+    plt.legend()
+    ax = plt.gca()
+    ax.set_facecolor('#f9f9f9')
+    plt.tight_layout()
+    plt.savefig(f'uploads/nsfw_frequency_{group_id}.png')
+    plt.close()
+
+
+def plot_top_users(group_id):
     top_users = (
         db.session.query(GroupStats.username, GroupStats.count_test_messages_sent)
         .filter_by(group_id=group_id)
         .order_by(GroupStats.count_test_messages_sent.desc())
-        .limit(top_n)
         .all()
     )
+
     usernames = [user[0] for user in top_users]
     message_counts = [user[1] for user in top_users]
-    plt.figure(figsize=(10, 5))
-    plt.barh(usernames, message_counts)  # Горизонтальный bar chart
-    plt.xlabel('Количество сообщений')
-    plt.ylabel('Пользователи')
-    plt.title(f'Топ-{top_n} самых активных пользователей')
+
+    plt.figure(figsize=(12, 8))
+    bars = plt.barh(usernames, message_counts, color='#1f77b4')
+
+    plt.xlabel('Количество сообщений', fontweight='bold', fontsize=12)
+    plt.ylabel('Пользователи', fontweight='bold', fontsize=12)
+    plt.title('Топ самых активных пользователей', fontsize=14, fontweight='bold')
+
+    for bar in bars:
+        width = bar.get_width()
+        plt.text(width, bar.get_y() + bar.get_height() / 2, f'{width:.0f}',
+                 ha='left', va='center', color='black', fontweight='bold')
+
+    plt.style.use('ggplot')
+
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.xaxis.grid(True, linestyle='--', alpha=0.7)
+    ax.yaxis.grid(False)
+    ax.set_facecolor('#f9f9f9')
+
     plt.tight_layout()
     plt.savefig(f'uploads/top_users_{group_id}.png')
     plt.close()
