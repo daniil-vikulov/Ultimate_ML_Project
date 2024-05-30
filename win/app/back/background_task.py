@@ -14,7 +14,7 @@ class LoopThread(QThread):
         self.running = False
         self.detector = Detector(0, False)
 
-    def run(self):
+    def run(self):  
         while True:
             if self.running:
                 self.loop_tick()

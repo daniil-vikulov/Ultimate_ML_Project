@@ -19,7 +19,6 @@ class MainWindow(QMainWindow):
         self.canvas = TransparentWindow()
         self.thread = LoopThread()
         self.thread.update_canvas_signal.connect(self.canvas.set_rectangle)
-        self.canvas.showFullScreen()
         self.thread.start()
 
     def initUI(self):
@@ -57,19 +56,17 @@ class MainWindow(QMainWindow):
             self.button.setText('Stop')
             self.button.adjustSize()
             self.thread.start_loop()
+            self.canvas.showFullScreen()
         else:
             self.button.setText('Start')
             self.button.adjustSize()
             self.thread.stop_loop()
+            self.canvas.close()
 
     def closeEvent(self, event):
-        if self.thread.running:
+        if self.button.text() == 'Stop':
             event.ignore()
             self.hide()
-            self.tray_icon.showMessage(
-                "BabyGuard",
-                "The application is still running in the background.",
-                QSystemTrayIcon.Information, 2000)
         else:
-            print("terminating")
+            self.canvas.close()
             event.accept()
