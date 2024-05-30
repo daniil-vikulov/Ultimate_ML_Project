@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
 
     def send_notification(self, title, message):
         self.tray_icon.show()
+        # TODO seem not to work (works in debug mode)
         QTimer.singleShot(100, lambda: self.tray_icon.showMessage(title, message, QSystemTrayIcon.Information,
                                                                   2000))
 

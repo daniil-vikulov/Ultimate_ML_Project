@@ -13,16 +13,21 @@ class LoopThread(QThread):
         super().__init__()
         self.running = False
         self.detector = Detector(0, False)
+        self.prev_rectangles = []
 
-    def run(self):  
+    def run(self):
         while True:
             if self.running:
                 self.loop_tick()
 
     def loop_tick(self):
+        rectangles = self.prev_rectangles
+        self.update_canvas_signal.emit([])
         screenshot = ImageGrab.grab()
+        self.update_canvas_signal.emit(rectangles)
         result = self.detector.censor(screenshot)
         self.update_canvas_signal.emit(result)
+        self.prev_rectangles = result
         print(result)
 
     def start_loop(self):
