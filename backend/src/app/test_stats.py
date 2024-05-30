@@ -1,10 +1,14 @@
 import unittest
-from unittest.mock import patch
+from datetime import datetime
+from unittest.mock import patch, MagicMock
 from flask import Flask, request, jsonify
 from database import db, User, GroupStats, MessageLog
 from nudenet import NudeClassifier
-from app import log_message, get_user_stats, get_group_stats, get_stats
+from app import log_message, get_user_stats, get_group_stats
+from database import get_stats, draw_plot, draw_user_stats, plot_top_users
 from app import app
+import matplotlib as plt
+from matplotlib.testing.decorators import check_figures_equal
 
 
 class TestApp(unittest.TestCase):
@@ -26,7 +30,7 @@ class TestApp(unittest.TestCase):
     @patch('database.draw_plot')
     @patch('database.draw_user_stats')
     @patch('database.plot_top_users')
-    @patch('app.get_stats')
+    @patch('database.get_stats')
     def test_get_user_stats_not_found(self,
                                       mock_get_stats,
                                       mock_plot_top_users,
@@ -59,7 +63,7 @@ class TestApp(unittest.TestCase):
     @patch('database.draw_plot')
     @patch('database.draw_user_stats')
     @patch('database.plot_top_users')
-    @patch('app.get_stats')
+    @patch('database.get_stats')
     def test_get_user_stats_found(self,
                                   mock_get_stats,
                                   mock_plot_top_users,
@@ -91,7 +95,7 @@ class TestApp(unittest.TestCase):
     def test_get_group_stats(self, mock_plot_top_users, mock_draw_plot):
         """Проверяет работу get_group_stats."""
         group_id = 123
-        with self.app.app_context():
+        with app.app_context():
             user1 = User(user_id=1, group_id=group_id, username='user1')
             user2 = User(user_id=2, group_id=group_id, username='user2')
             group_stats1 = GroupStats(user_id=1, group_id=group_id, username='user1', count_nsfw_photos_sent=10)
