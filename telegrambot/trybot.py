@@ -4,8 +4,8 @@ import time
 import requests
 import telebot
 
-from telegrambot.token_bot import bot
-from telegrambot.censor import censor_colour
+from token_bot import bot
+from censor import censor_colour
 
 server_url = 'http://server:5000'
 

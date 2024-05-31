@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from telegrambot.trybot import handle_start, handle_help, handle_mute, handle_kick, handle_test, handle_photo, handle_stats, \
+from trybot import handle_start, handle_help, handle_mute, handle_kick, handle_test, handle_photo, handle_stats, \
     write_ans, next_img, colour
 
 
-@patch('telegrambot.trybot.bot')
+@patch('trybot.bot')
 class TestTrybot(unittest.TestCase):
 
     def test_handle_start(self, mock_bot):
@@ -36,14 +36,13 @@ class TestTrybot(unittest.TestCase):
                 message.chat.id = 12345
                 handle_help(message)
                 mock_bot.send_message.assert_called_once_with(12345,
-                                                              f'Если надоел какой-то пользователь, то можно замутить его'
-                                                              f' командой /mute\n'
+                                                              f'Если надоел какой-то пользователь, то можно замутить его командой /mute\n'
                                                               f'Также можно кикнуть /kick '
-                                                              f'(просто ответьте на сообщение пользователя, '
-                                                              f'который надоел)\n'
-                                                              f'Если хотите получить статистику нарушителей чата'
-                                                              f' используйте'
-                                                              f' /stats')
+                                                              f'(просто ответьте на сообщение пользователя, который надоел)\n'
+                                                              f'Если вы админ и хотите получить статистику нарушителей чата, '
+                                                              f'используйте /stats\n'
+                                                              f'Если вы участник чата, то по команде /stats можно узнать свою статистику\n'
+                                                              f'Если вы хотите посмотреть на визуализацию статистики в чате, используйте /plots')
             except Exception as e:
                 print(f'{e}')
         else:
