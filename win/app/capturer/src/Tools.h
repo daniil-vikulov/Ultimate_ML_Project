@@ -21,6 +21,8 @@ namespace bg {
 
     void saveWindows(std::vector<HWND> &windows);
 
+    void saveWindow(HWND hwnd, const wchar_t *file);
+
     ///@brief returns window's title based on its descriptor
     std::wstring getWindowTitle(HWND hwnd);
 

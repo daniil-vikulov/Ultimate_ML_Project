@@ -52,6 +52,23 @@ void bg::saveWindows(std::vector<HWND> &windows) {
     file.close();
 }
 
+void bg::saveWindow(HWND hwnd, const wchar_t *file) {
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+
+    std::cout << rect.left << ' ' << rect.top << ' ' << rect.right << ' ' << rect.bottom << std::endl;
+
+    HWND aboveHwnd = GetWindow(hwnd, GW_HWNDPREV); // If the window is most-top, aboveHwnd equals to hwnd
+
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+
+    if (width > 100 && height > 100) {
+        saveToPng(captureWindow(hwnd), file);
+    }
+}
+
+
 std::wstring bg::getWindowTitle(HWND hwnd) {
     if (hwnd == nullptr) {
         return L"";
@@ -69,14 +86,21 @@ std::wstring bg::getWindowTitle(HWND hwnd) {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
+int counter = 0;
+
 BOOL CALLBACK bg::EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+
     if (!IsWindowVisible(hwnd)) {
         return TRUE;
     }
 
-    auto windows = reinterpret_cast<std::vector<HWND> *>(lParam);
+    //auto windows = reinterpret_cast<std::vector<HWND> *>(lParam);
 
-    windows->push_back(hwnd);
+    std::wstring path = std::to_wstring(counter++);
+    path += L".png";
+
+    saveWindow(hwnd, path.c_str());
+    //windows->push_back(hwnd);
 
     return TRUE;
 }

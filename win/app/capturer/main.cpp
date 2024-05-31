@@ -7,9 +7,9 @@ int main() {
     std::vector<HWND> windows;
     EnumWindows(bg::EnumWindowsProc, reinterpret_cast<LPARAM>(&windows));
 
-    bg::saveWindows(windows);
+    //bg::saveWindows(windows);
 
-    std::cout << windows.size() << std::endl;
+    //std::cout << windows.size() << std::endl;
 
     return 0;
 }
