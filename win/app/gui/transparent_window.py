@@ -10,11 +10,7 @@ class TransparentWindow(QtWidgets.QWidget):
         self.setWindowTitle('BabyGuard canvas')
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
-        # Allow clicks to pass through the window except where rectangles are drawn
         self.setWindowFlag(QtCore.Qt.WindowTransparentForInput, True)
-
-        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        # self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
 
         self.rectangles = []
 

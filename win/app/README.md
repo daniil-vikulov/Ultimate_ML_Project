@@ -2,7 +2,7 @@
 
 ## Description
 
-Will be added soon...
+BabyGuard Windows client. Censors sexually explicit content, displayed on the screen.
 
 ## Code style
 
