@@ -12,7 +12,7 @@ class LoopThread(QThread):
     def __init__(self):
         super().__init__()
         self.running = False
-        self.detector = Detector(0, False)
+        self.detector = Detector(1, False)
         # self.prev_rectangles = []
 
     def run(self):
