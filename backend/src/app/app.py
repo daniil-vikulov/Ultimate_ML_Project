@@ -8,10 +8,10 @@ from nudenet.classifier import Classifier as NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
-import backend.src.app.data_create
-from backend.src.app.colours import colours
-from backend.src.app.data_create import db
-from backend.src.app.database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
+import data_create
+from colours import colours
+from data_create import db
+from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-backend.src.app.data_create.init_app(app)
+data_create.init_app(app)
 
 classifier = NudeClassifier()
 detector = NudeDetector()

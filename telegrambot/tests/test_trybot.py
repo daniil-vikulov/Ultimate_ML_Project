@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, MagicMock
-# from backend.src.app.app import app as flask_app
 from telegrambot.trybot import handle_start, handle_help, handle_mute, handle_kick, handle_test, handle_photo, handle_stats, \
     write_ans, next_img, colour
 
@@ -188,38 +187,6 @@ class TestTrybot(unittest.TestCase):
                                                               "отправьте следующее фото:)")
             except Exception as e:
                 print(f'{e}')
-
-
-# @patch('requests.get')
-# class TestHandleStats(unittest.TestCase):
-#
-#     @patch('telegrambot.trybot.bot.get_chat_member')
-#     @patch('telegrambot.trybot.bot.reply_to')
-#     def test_handle_stats_admin(self, mock_reply_to, mock_get_chat_member):
-#         mock_message = MagicMock(
-#             chat_id=-123456,
-#             chat_type='supergroup',
-#             from_user=MagicMock(id=1234),
-#             text='/stats'
-#         )
-#         mock_get_chat_member.return_value.status = 'administrator'
-#
-#         response = self.app.get('/group_stats/-123456')
-#         self.assertEqual(response.status_code, 200)
-#
-#     @patch('telegrambot.trybot.bot.get_chat_member')
-#     @patch('telegrambot.trybot.bot.reply_to')
-#     def test_handle_stats_user(self, mock_reply_to, mock_get_chat_member):
-#         mock_message = MagicMock(
-#             chat_id=-123456,
-#             chat_type='supergroup',
-#             from_user=MagicMock(id=5678),
-#             text='/stats'
-#         )
-#         mock_get_chat_member.return_value.status = 'member'
-#
-#         response = self.app.get('/stats/-123456/5678')
-#         self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':

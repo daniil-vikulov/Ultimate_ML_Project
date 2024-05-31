@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from flask import Flask
 
-from backend.src.app.app import app
-from backend.src.app.database import db, User, GroupStats
+from app import app
+from database import db, User, GroupStats
 
 
 class TestApp(unittest.TestCase):
@@ -23,10 +23,10 @@ class TestApp(unittest.TestCase):
             db.session.remove()
             db.drop_all()
 
-    @patch('backend.src.app.database.draw_plot')
-    @patch('backend.src.app.database.draw_user_stats')
-    @patch('backend.src.app.database.plot_top_users')
-    @patch('backend.src.app.database.get_stats')
+    @patch('database.draw_plot')
+    @patch('database.draw_user_stats')
+    @patch('database.plot_top_users')
+    @patch('database.get_stats')
     def test_get_user_stats_not_found(self,
                                       mock_get_stats,
                                       mock_plot_top_users,
@@ -56,10 +56,10 @@ class TestApp(unittest.TestCase):
         mock_plot_top_users.assert_called_once_with(group_id, 5)
         mock_draw_plot.assert_called_once_with(user_id, group_id)
 
-    @patch('backend.src.app.database.draw_plot')
-    @patch('backend.src.app.database.draw_user_stats')
-    @patch('backend.src.app.database.plot_top_users')
-    @patch('backend.src.app.database.get_stats')
+    @patch('database.draw_plot')
+    @patch('database.draw_user_stats')
+    @patch('database.plot_top_users')
+    @patch('database.get_stats')
     def test_get_user_stats_found(self,
                                   mock_get_stats,
                                   mock_plot_top_users,
@@ -86,8 +86,8 @@ class TestApp(unittest.TestCase):
         mock_draw_user_stats.assert_called_once_with(user_id, group_id)
         mock_plot_top_users.assert_called_once_with(group_id, 5)
 
-    @patch('backend.src.app.database.draw_plot')
-    @patch('backend.src.app.database.plot_top_users')
+    @patch('database.draw_plot')
+    @patch('database.plot_top_users')
     def test_get_group_stats(self, mock_plot_top_users, mock_draw_plot):
         """Проверяет работу get_group_stats."""
         group_id = 123

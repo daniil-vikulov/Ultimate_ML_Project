@@ -147,6 +147,8 @@ image_cnt = 0
 
 @bot.message_handler(commands=['plots'])
 def handle_plots(message):
+    """handles /plots command sent in a supergroup,
+        this command can be used to visualize statistics in a group"""
     group_id = message.chat.id
     user_id = message.from_user.id
     if message.chat.type == 'supergroup':
@@ -227,8 +229,8 @@ def handle_photo(message):
                         print(f'server error {response.text}')
                 except requests.exceptions.RequestException as e:
                     print(f"Ошибка при отправке данных на сервер: {e}")
-                bot.send_message(message.chat.id,
-                                 "ура ура! фото приличное:)")
+                # bot.send_message(message.chat.id,
+                #                  "ура ура! фото приличное:)")
                 os.remove(file_name)
             else:  # nsfw content sent to a supergroup
                 is_nsfw = 1
@@ -334,6 +336,7 @@ def handle_photo(message):
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def process_message(message):
+    """handles text messages sent in a supergroup to correctly add them to db"""
     user_id = message.from_user.id
     group_id = message.chat.id
     username = message.from_user.username
@@ -373,7 +376,7 @@ def next_img(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("colour"))
 def colour(call):
-    """Handles user's choice of colour to blur the picture (for personal chats)"""
+    """handles user's choice of colour to blur the picture (for personal chats)"""
     if call.message:
         file_name = call.data.split(':')[2]
         chosen_colour = call.data.split(':')[1]

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import telegrambot
 from telegrambot.trybot import handle_photo, colour
+import telegrambot
 
 
 @patch('telegrambot.trybot.bot')
@@ -32,7 +32,7 @@ class TestOs(unittest.TestCase):
                 call.message = MagicMock()
                 call.message.chat.id = 12345
                 mock_censor_colour.return_value = f"test2_censored_{case['call_data'].split(':')[1]}.jpg"
-                colour(call)
+                telegrambot.colour(call)
                 mock_censor_colour.assert_called_once_with(case['call_data'].split(':')[2], case['expected_colour'])
                 mock_bot.send_photo.assert_called_once_with(12345, any)
                 mock_os.remove.assert_any_call(f"test2_censored_{case['call_data'].split(':')[1]}.jpg")
