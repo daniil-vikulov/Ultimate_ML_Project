@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from flask import Flask
 
-from database import register_user, login_user, validate_request
+from backend.src.app.database import register_user, login_user, validate_request
 
 
 class TestApp(unittest.TestCase):
@@ -17,8 +17,8 @@ class TestApp(unittest.TestCase):
     def tearDown(self):
         self.app_context.pop()
 
-    @patch('database.User')
-    @patch('database.db')
+    @patch('backend.src.app.database.User')
+    @patch('backend.src.app.database.db')
     def test_register_user(self, mock_db, mock_user):
         mock_request_data = {
             'user_id': '1',
@@ -36,8 +36,8 @@ class TestApp(unittest.TestCase):
         mock_db.session.add.assert_called_once_with(mock_user_)
         mock_db.session.commit.assert_called_once()
 
-    @patch('database.User')
-    @patch('database.db')
+    @patch('backend.src.app.database.User')
+    @patch('backend.src.app.database.db')
     def test_register_user_error(self, mock_db, mock_user):
         mock_request_data = {
             'username': 'test_user',
@@ -50,8 +50,8 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response[1], 400)
         self.assertIn('error', response[0].json)
 
-    @patch('database.User')
-    @patch('database.db')
+    @patch('backend.src.app.database.User')
+    @patch('backend.src.app.database.db')
     def test_register_user_exception(self, mock_db, mock_user):
         mock_request_data = {
             'user_id': '1',
@@ -67,7 +67,7 @@ class TestApp(unittest.TestCase):
         self.assertIn('error', response[0].json)
         mock_db.session.rollback.assert_called_once()
 
-    @patch('database.User')
+    @patch('backend.src.app.database.User')
     def test_login_user(self, mock_user):
         mock_request_data = {
             'user_id': '1',
@@ -82,7 +82,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response[1], 200)
         self.assertEqual(response[0].json, {'message': 'Login successful'})
 
-    @patch('database.User')
+    @patch('backend.src.app.database.User')
     def test_login_user_404(self, mock_user):
         mock_request_data = {
             'user_id': '1',

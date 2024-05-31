@@ -8,10 +8,10 @@ from nudenet.classifier import Classifier as NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
 
-import data_create
-from colours import colours
-from data_create import db
-from database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
+import backend.src.app.data_create
+from backend.src.app.colours import colours
+from backend.src.app.data_create import db
+from backend.src.app.database import User, GroupStats, MessageLog, get_stats, draw_plot, draw_user_stats, plot_top_users, draw_nsfw_plot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-data_create.init_app(app)
+backend.src.app.data_create.init_app(app)
 
 classifier = NudeClassifier()
 detector = NudeDetector()
@@ -126,6 +126,12 @@ def censor_image(filepath):
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
         censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
+        detections = detector.detect(filepath)
+        face_classes = ['FACE_FEMALE', 'FACE_MALE']
+        only_face_classes = all(detection["class"] in face_classes for detection in detections)
+        if not detections or only_face_classes:
+            logger.info(f"Image safe")
+            return jsonify({'message': 'Image safe', 'censored_image_path': filepath}), 200
         detector.censor(filepath)
         logger.info(f"Image censored successfully. Saved to {censored_filepath}")
         return jsonify({'message': 'Image censored', 'censored_image_path': censored_filepath}), 200
@@ -215,7 +221,7 @@ def detect_image(filepath):
     logger.info(f"Detecting nudity in image at {filepath}")
     try:
         detected_parts = detector.detect(filepath)
-        formatted_parts = [{'class': part['class'].lower(), 'score': round(part['score'], 3)} for part in
+        formatted_parts = [{'class': part['class'], 'score': round(part['score'], 3)} for part in
                            detected_parts]
         logger.info("Nudity detected successfully")
         return jsonify({'detected_parts': formatted_parts}), 200

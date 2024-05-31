@@ -4,7 +4,8 @@ import time
 import requests
 import telebot
 
-from token_bot import bot
+from telegrambot.token_bot import bot
+from telegrambot.censor import censor_colour
 
 server_url = 'http://server:5000'
 
@@ -28,7 +29,10 @@ def handle_help(message):
         bot.send_message(message.chat.id, f'Если надоел какой-то пользователь, то можно замутить его командой /mute\n'
                                           f'Также можно кикнуть /kick '
                                           f'(просто ответьте на сообщение пользователя, который надоел)\n'
-                                          f'Если хотите получить статистику нарушителей чата используйте /stats')
+                                          f'Если вы админ и хотите получить статистику нарушителей чата, '
+                                          f'используйте /stats\n'
+                                          f'Если вы участник чата, то по команде /stats можно узнать свою статистику\n'
+                                          f'Если вы хотите посмотреть на визуализацию статистики в чате, используйте /plots')
     else:
         bot.send_message(message.chat.id, f'{message.from_user.first_name}!\n'
                                           f'Для того, чтобы протестировать работу сервиса, '
@@ -135,7 +139,7 @@ def handle_stats(message):
             print(f"Ошибка при получении статистики: {e}")
             bot.reply_to(message, "Ошибка при получении статистики.")
     else:
-        bot.send_message(message.chat.id, f'невозможно узнать статистику')
+        bot.send_message(message.chat.id, f'Эта команда доступна только в группах')
 
 
 image_cnt = 0
@@ -145,37 +149,40 @@ image_cnt = 0
 def handle_plots(message):
     group_id = message.chat.id
     user_id = message.from_user.id
-    try:
-        response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
-        response.raise_for_status()
-        urls = response.json()
+    if message.chat.type == 'supergroup':
+        try:
+            response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
+            response.raise_for_status()
+            urls = response.json()
 
-        if urls.get('graph_url'):
-            with open(urls.get('graph_url'), 'rb') as g:
-                bot.send_photo(message.chat.id, g)
+            if urls.get('graph_url'):
+                with open(urls.get('graph_url'), 'rb') as g:
+                    bot.send_photo(message.chat.id, g)
 
-        if urls.get('nsfw_url'):
-            with open(urls.get('nsfw_url'), 'rb') as n:
-                bot.send_photo(message.chat.id, n)
+            if urls.get('nsfw_url'):
+                with open(urls.get('nsfw_url'), 'rb') as n:
+                    bot.send_photo(message.chat.id, n)
 
-        if urls.get('top_users_url'):
-            with open(urls.get('top_users_url'), 'rb') as t:
-                bot.send_photo(message.chat.id, t)
+            if urls.get('top_users_url'):
+                with open(urls.get('top_users_url'), 'rb') as t:
+                    bot.send_photo(message.chat.id, t)
 
-        if urls.get('nsfw_stats_graph'):
-            with open(urls.get('nsfw_stats_graph'), 'rb') as x:
-                bot.send_photo(message.chat.id, x)
+            if urls.get('nsfw_stats_graph'):
+                with open(urls.get('nsfw_stats_graph'), 'rb') as x:
+                    bot.send_photo(message.chat.id, x)
 
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка при получении графиков: {e}")
-        bot.reply_to(message, "Ошибка при получении графиков.")
+        except requests.exceptions.RequestException as e:
+            print(f"Ошибка при получении графиков: {e}")
+            bot.reply_to(message, "Ошибка при получении графиков.")
+    else:
+        bot.send_message(message.chat.id, "Эта команда доступна только в группах")
 
 
 @bot.message_handler(content_types=['photo', 'document'])
 def handle_photo(message):
     """handles sending photos to a supergroup, or a personal chat with bot,
     in case of a supergroup, bot deletes sensitive content and sends blurred version, also mutes the user
-    in case of a personal chat, bot tells the user^ that nsfw content was detected"""
+    in case of a personal chat, bot tells the user, that nsfw content was detected"""
     global image_cnt
     is_text = 0
     message_text = ''
@@ -197,6 +204,7 @@ def handle_photo(message):
         url_detect = f'{server_url}/detect'
         files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
         response = requests.post(url_detect, files=files)
+        # print(response.json())
         files['file'][1].close()
         if response.status_code == 200:
             result = response.json()
@@ -270,7 +278,9 @@ def handle_photo(message):
                                     response = requests.get(f'{server_url}/stats/{group_id}/{user_id}')
                                     response.raise_for_status()  # Проверка на ошибки HTTP
                                     info = response.json()
-                                    count = info.get('count_nsfw_photos_sent')
+                                    # print(info)
+                                    count = info.get('nsfw_photos')
+                                    # print(count)
                                     mute_seconds = 60
                                     if count > 3:
                                         mute_seconds = 300

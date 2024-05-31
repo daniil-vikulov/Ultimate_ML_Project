@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import telegrambot
 from telegrambot.trybot import handle_photo, colour
 
 

@@ -5,7 +5,7 @@ import matplotlib.dates as mdates
 from flask import request, jsonify
 from matplotlib import pyplot as plt
 
-from data_create import db
+from backend.src.app.data_create import db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
