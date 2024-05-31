@@ -59,6 +59,7 @@ def test_capturer():
     print(windows)
     for window, title in windows:
         print("Capturing window: " + title)
+
         t = time.time()
         capturer = Capturer()
         capturer.__capture_window__(title)

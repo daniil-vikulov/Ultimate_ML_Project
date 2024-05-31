@@ -1,5 +1,6 @@
 import os
 
+import pywintypes
 import win32con
 import win32gui
 from PIL import Image
@@ -61,6 +62,7 @@ class Capturer:
 
     @staticmethod
     def __capture_window__(window_name):
+        print("Capturing...", window_name)
         capture = WindowsCapture(cursor_capture=False, draw_border=False, monitor_index=0, window_name=window_name)
 
         @capture.event
@@ -127,20 +129,25 @@ class Capturer:
 
     @staticmethod
     def __merge_images__(images, windows):
-        rects = [win32gui.GetWindowRect(hwnd) for hwnd, _ in windows]
+        try:
+            rects = [win32gui.GetWindowRect(hwnd) for hwnd, _ in windows]
 
-        max_right = max((rect[2]) for rect in rects)
-        max_bottom = max((rect[3]) for rect in rects)
+            print(rects)
 
-        print(max_right, max_bottom)
+            max_right = max((rect[2]) for rect in rects)
+            max_bottom = max((rect[3]) for rect in rects)
 
-        final_image = Image.new("RGBA", (max_right, max_bottom), (0, 0, 0, 0))
+            print(max_right, max_bottom)
 
-        for img, rect in zip(images, rects):
-            if img.mode != 'RGBA':
-                print("Bad mod. Converting...")
-                img = img.convert('RGBA')
-            left, top, right, bottom = rect
-            final_image.paste(img, (left, top), img)
+            final_image = Image.new("RGBA", (max_right, max_bottom), (0, 0, 0, 0))
+
+            for img, rect in reversed(list(zip(images, rects))):
+                if img.mode != 'RGBA':
+                    print("Bad mod. Converting...")
+                    img = img.convert('RGBA')
+                left, top, right, bottom = rect
+                final_image.paste(img, (left, top), img)
+        except pywintypes.error as e:
+            return None
 
         return final_image
