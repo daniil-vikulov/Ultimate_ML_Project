@@ -8,11 +8,14 @@ from token_bot import bot
 from censor import censor_colour
 from queue import Queue
 import threading
+MAX_IMAGES_IN_QUEUE = 3
+current_image_count = 0
+image_count_lock = threading.Lock()
 
 image_queue = Queue()
 
-# server_url = 'http://server:5000'
-server_url = 'http://127.0.0.1:5000'
+server_url = 'http://server:5000'
+# server_url = 'http://127.0.0.1:5000'
 
 
 @bot.message_handler(commands=['start'])
@@ -20,11 +23,15 @@ def handle_start(message):
     """handles /start command sent in a supergroup or in a personal chat with bot"""
     if message.chat.type == 'supergroup':
         bot.send_message(message.chat.id, f'Привет всем! Этот бот будет следить за порядком в чате\n'
-                                          f'Нельзя слать неприличные фото, за это бан')
+                                          f'Нельзя слать неприличные фото, за это бан\n'
+                                          f'Настоятельно рекомендуем не отправлять более чем 3 фото за раз - это ведет '
+                                          f'к ошибкам обработки фото.')
     else:
         bot.send_message(message.chat.id,
                          f'Привет, {message.from_user.first_name}! '
-                         f'Проверь свое фото на наличие неприличного контента')
+                         f'Проверь свое фото на наличие неприличного контента\n'
+                         f'Настоятельно рекомендуем не отправлять более чем 3 фото за раз - это ведет '
+                         f'к ошибкам обработки фото.')
 
 
 @bot.message_handler(commands=['help'])
@@ -190,26 +197,32 @@ def handle_photo(message):
     """handles sending photos to a supergroup, or a personal chat with bot,
     in case of a supergroup, bot deletes sensitive content and sends blurred version, also mutes the user
     in case of a personal chat, bot tells the user, that nsfw content was detected"""
-    # global image_cnt
-    image_queue.put(message)
-    # bot.send_message(message.chat.id, "you are in handle_photo")
+    global current_image_count
+    with image_count_lock:
+        if current_image_count < MAX_IMAGES_IN_QUEUE:
+            image_queue.put(message)
+            current_image_count += 1
+        else:
+            bot.send_message(message.chat.id, "Отправка более чем 3х фото единовременно ведет к ошибкам с Telegram API")
 
 
 def process_img_q():
+    global current_image_count
     while True:
         message = image_queue.get()
         try:
             process_image(message)
         except Exception as e:
             print(f"Error processing image: {e}")
-            bot.send_message(message.chat.id, "Слишком много запросов к телеграм API, "
-                                              "пожалуйста, отправляйте фото по одной")
+        finally:
+            with image_count_lock:
+                current_image_count -= 1
         image_queue.task_done()
 
 
 def retry_request(func, *args, **kwargs):
-    max_retries = 5
-    delay = 5
+    max_retries = 10
+    delay = 7
     for attempt in range(max_retries):
         try:
             return func(*args, **kwargs)
@@ -218,6 +231,7 @@ def retry_request(func, *args, **kwargs):
                 retry_after = int(e.result_json['parameters']['retry_after'])
                 print(f"Too many requests. Retry after {retry_after} seconds.")
                 time.sleep(retry_after)
+                return
             else:
                 raise
         except requests.exceptions.RequestException as e:
@@ -308,8 +322,8 @@ def process_image(message):
                 if response.status_code == 200:
                     answer = response.json()
                     # print(answer)
-                    # censored = answer.get('censored_image_path')
-                    censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
+                    censored = answer.get('censored_image_path')
+                    # censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
                     # print(censored)
                     if censored:
                         # censored = detector.censor(f'image_{image_cnt}.jpg')
@@ -364,8 +378,8 @@ def process_image(message):
                 keyboard = telebot.types.InlineKeyboardMarkup()
                 keyboard.add(telebot.types.InlineKeyboardButton(text="дальше", callback_data=f"next:{file_name}"))
                 retry_request(bot.send_message, message.chat.id,
-                                 "ура ура! фото приличное:)",
-                                 reply_markup=keyboard)
+                              "ура ура! фото приличное:)",
+                              reply_markup=keyboard)
             else:
                 keyboard = telebot.types.InlineKeyboardMarkup()
                 keyboard.add(
@@ -383,8 +397,8 @@ def process_image(message):
                 keyboard.add(
                     telebot.types.InlineKeyboardButton(text="фиолетовый", callback_data=f"colour:violet:{file_name}"))
                 retry_request(bot.send_message, message.chat.id,
-                                 "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
-                                 reply_markup=keyboard)
+                              "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
+                              reply_markup=keyboard)
             image_cnt += 1
 
 
