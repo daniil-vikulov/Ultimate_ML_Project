@@ -2,7 +2,8 @@
 
 ## Description
 
-Will be added soon...
+BabyGuard Windows client Installer. This setup application helps end-user to install, properly uninstall and update with a
+BabyGuard with single mouse click
 
 ## Code style
 
