@@ -6,8 +6,13 @@ import telebot
 
 from token_bot import bot
 from censor import censor_colour
+from queue import Queue
+import threading
 
-server_url = 'http://server:5000'
+image_queue = Queue()
+
+# server_url = 'http://server:5000'
+server_url = 'http://127.0.0.1:5000'
 
 
 @bot.message_handler(commands=['start'])
@@ -185,7 +190,45 @@ def handle_photo(message):
     """handles sending photos to a supergroup, or a personal chat with bot,
     in case of a supergroup, bot deletes sensitive content and sends blurred version, also mutes the user
     in case of a personal chat, bot tells the user, that nsfw content was detected"""
+    # global image_cnt
+    image_queue.put(message)
+    # bot.send_message(message.chat.id, "you are in handle_photo")
+
+
+def process_img_q():
+    while True:
+        message = image_queue.get()
+        try:
+            process_image(message)
+        except Exception as e:
+            print(f"Error processing image: {e}")
+            bot.send_message(message.chat.id, "Слишком много запросов к телеграм API, "
+                                              "пожалуйста, отправляйте фото по одной")
+        image_queue.task_done()
+
+
+def retry_request(func, *args, **kwargs):
+    max_retries = 5
+    delay = 5
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except telebot.apihelper.ApiTelegramException as e:
+            if e.error_code == 429:
+                retry_after = int(e.result_json['parameters']['retry_after'])
+                print(f"Too many requests. Retry after {retry_after} seconds.")
+                time.sleep(retry_after)
+            else:
+                raise
+        except requests.exceptions.RequestException as e:
+            print(f"Request error: {e}")
+            time.sleep(delay)
+    raise Exception("Max retries exceeded")
+
+
+def process_image(message):
     global image_cnt
+    # bot.send_message(message.chat.id, "you are here")
     is_text = 0
     message_text = ''
     user_id = message.from_user.id
@@ -200,11 +243,15 @@ def handle_photo(message):
         file_info = bot.get_file(file_id)
         file_name = f'image_{image_cnt}.jpg'
         downloaded_file = bot.download_file(file_info.file_path)
+        # print(downloaded_file)
+        # time.sleep(10)
         with open(file_name, 'wb') as img:
             img.write(downloaded_file)
+            # time.sleep(10)
         # bot.send_message(message.chat.id, f"photo image_{image_cnt}.jpg saved successfully")
         url_detect = f'{server_url}/detect'
         files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
+        # time.sleep(10)
         response = requests.post(url_detect, files=files)
         # print(response.json())
         files['file'][1].close()
@@ -254,14 +301,15 @@ def handle_photo(message):
                                  f"{message.from_user.last_name},"
                                  f" был обнаружен непристойный контент. Фото было удалено, вот заблюренная версия:")
                 url_censor = f'{server_url}/censor'
+                # time.sleep(10)
                 files = {'file': (file_name, open(file_name, 'rb'), 'image/jpeg')}
                 response = requests.post(url_censor, files=files)
                 files['file'][1].close()
                 if response.status_code == 200:
                     answer = response.json()
                     # print(answer)
-                    censored = answer.get('censored_image_path')
-                    # censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
+                    # censored = answer.get('censored_image_path')
+                    censored = os.path.join('../backend/src/app', answer.get('censored_image_path'))
                     # print(censored)
                     if censored:
                         # censored = detector.censor(f'image_{image_cnt}.jpg')
@@ -406,4 +454,6 @@ def colour(call):
             print(f'Ошибка запроса: {response.status_code} - {response.text}')
 
 
+thread = threading.Thread(target=process_img_q, daemon=True)
+thread.start()
 bot.polling(none_stop=True)

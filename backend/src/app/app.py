@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from nudenet.classifier import Classifier as NudeClassifier
 from nudenet.nudenet import NudeDetector
 from werkzeug.utils import secure_filename
+import time
 
 import data_create
 from colours import colours
@@ -122,6 +123,7 @@ def censor_image(filepath):
     :return: JSON response with a message, path to the censored image, save censored image named
     '{base_name}_censored.jpg' into folder /backend/src/uploads
     """
+    # time.sleep(10)
     logger.info(f"Censoring image at {filepath}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
