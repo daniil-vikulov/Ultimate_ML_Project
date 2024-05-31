@@ -1,14 +1,10 @@
 import unittest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
-from flask import Flask, request, jsonify
-from database import db, User, GroupStats, MessageLog
-from nudenet import NudeClassifier
-from app import log_message, get_user_stats, get_group_stats
-from database import get_stats, draw_plot, draw_user_stats, plot_top_users
+from unittest.mock import patch
+
+from flask import Flask
+
 from app import app
-import matplotlib as plt
-from matplotlib.testing.decorators import check_figures_equal
+from database import db, User, GroupStats
 
 
 class TestApp(unittest.TestCase):
@@ -36,7 +32,7 @@ class TestApp(unittest.TestCase):
                                       mock_plot_top_users,
                                       mock_draw_user_stats,
                                       mock_draw_plot
-                                  ):
+                                      ):
         """Проверяет работу get_user_stats, когда статистика не найдена."""
         group_id = -123
         user_id = 123

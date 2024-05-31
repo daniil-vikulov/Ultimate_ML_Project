@@ -135,17 +135,25 @@ def censor_image(filepath):
 
 
 def censor_colour(image_path, colour, classes=None, output_path=None):
+    """
+    Censors specific areas of an image based on detected classes by filling them with a specified colour.
+    :param:
+        image_path (str): Path to the input image.
+        colour (str): Name of the colour to use for censoring.
+        classes (list, optional): A list of class names to censor. If none, all detected classes are censored, defaults to None.
+        output_path (str, optional): The path to save the censored image.
+    :return: None
+    """
     if classes is None:
         classes = []
     detections = detector.detect(image_path)
     face_classes = ['FACE_FEMALE', 'FACE_MALE']
     only_face_classes = all(detection["class"] in face_classes for detection in detections)
     if classes:
-        detections = [
-            detection for detection in detections if detection["class"] in classes
-        ]
-
+        detections = [detection for detection in detections if detection["class"] in classes]
     img = cv2.imread(image_path)
+
+    # Apply censoring to the detected areas
     for detection in detections:
         c = detection["class"]
         box = detection["box"]
@@ -155,15 +163,23 @@ def censor_colour(image_path, colour, classes=None, output_path=None):
 
     if output_path:
         cv2.imwrite(output_path, img)
+        logging.info(f"Censored image saved to '{output_path}'")
 
 
 def censor_image_with_colour(filepath, colour):
-    logger.info(f"Censoring image with colour at {filepath}")
+    """
+    Censors an image by filling detected objects with a specified colour and saves the result.
+    :param:
+        filepath (str): The path to the input image.
+        colour (str): The name of the colour to use for censoring.
+    :return: tuple: A Flask JSON response with a message and the path to the censored image, and an HTTP status code.
+    """
+    logger.info(f"Censoring image at {filepath} with colour {colour}")
     try:
         base_name, extension = os.path.splitext(os.path.basename(filepath))
         censored_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{base_name}_censored{extension}")
         censor_colour(filepath, colour, output_path=censored_filepath)
-        logger.info(f"Image censored with colour successfully. Saved to {censored_filepath}")
+        logger.info(f"Image censored successfully. Saved to {censored_filepath}")
         return jsonify({'message': 'Image censored with colour', 'censored_image_path': censored_filepath}), 200
     except Exception as e:
         logger.exception("Failed to censor image with colour")
@@ -210,6 +226,17 @@ def detect_image(filepath):
 
 @app.route('/message', methods=['POST'])
 def log_message():
+    """
+    Logs a message and updates user and group statistics.
+    :param
+    - username: The username of the sender
+    - user_id: The ID of the user
+    - group_id: The ID of the group
+    - message: The content of the message
+    - is_text: Boolean indicating if the message is text
+    - is_nsfw: Boolean indicating if the message is NSFW
+    :return: JSON response indicating success or failure.
+    """
     data = request.get_json()
     username = data.get('username')
     user_id = data.get('user_id')
@@ -218,9 +245,11 @@ def log_message():
     is_text = data.get('is_text')
     is_nsfw = data.get('is_nsfw')
 
+    logger.info(f"Received message from user_id={user_id}, group_id={group_id}")
     try:
         user = User.query.get(user_id)
         if not user:
+            logger.info(f"Creating new user with user_id={user_id}")
             user = User(user_id=user_id, group_id=group_id, username=username)
             db.session.add(user)
         group_stats = GroupStats.query.filter_by(
@@ -229,24 +258,18 @@ def log_message():
             username=username
         ).first()
         if not group_stats:
+            logger.info(f"Creating new group stats for user_id={user_id} and group_id={group_id}")
             group_stats = GroupStats(user_id=user_id, group_id=group_id, username=username)
             db.session.add(group_stats)
             db.session.commit()
         if is_text:
             group_stats.count_test_messages_sent += 1
-            group_stats.count_nsfw_photos_sent = group_stats.count_nsfw_photos_sent
-            group_stats.count_safe_photos_sent = group_stats.count_safe_photos_sent
-        if is_nsfw:
+        elif is_nsfw:
             group_stats.count_nsfw_photos_sent += 1
-            group_stats.count_test_messages_sent = group_stats.count_test_messages_sent
-            group_stats.count_safe_photos_sent = group_stats.count_safe_photos_sent
-        elif not is_nsfw and not is_text:
+        else:
             group_stats.count_safe_photos_sent += 1
-            group_stats.count_test_messages_sent = group_stats.count_test_messages_sent
-            group_stats.count_nsfw_photos_sent = group_stats.count_nsfw_photos_sent
 
         db.session.commit()
-
         message_log = MessageLog(
             user_id=user_id,
             group_id=group_id,
@@ -258,35 +281,51 @@ def log_message():
         db.session.add(message_log)
         db.session.commit()
 
-        return jsonify({'message': 'Данные сохранены'}), 201
+        logger.info(f"Message logged for user_id={user_id}, group_id={group_id}")
+        return jsonify({'message': 'Data is saved'}), 201
+
     except Exception as e:
-        print(f"Ошибка при сохранении данных: {e}")
-        return jsonify({'error': 'Ошибка сервера'}), 500
+        logger.exception("Error saving data")
+        return jsonify({'error': 'Server error'}), 500
 
 
 @app.route('/stats/<group_id>/<user_id>')
 def get_user_stats(group_id, user_id):
+    """
+    Endpoint to retrieve and visualize user statistics in a group.
+    :param group_id: ID of the group
+        user_id: ID of the user
+    :return: JSON response with user statistics or an error message if stats are not found or server error occurs.
+    """
+    logger.info(f"Fetching stats for user_id={user_id} in group_id={group_id}")
     try:
         draw_plot(group_id)
         draw_nsfw_plot(group_id)
         draw_user_stats(group_id)
         plot_top_users(group_id)
-        stats = GroupStats.query.filter_by(
-            user_id=user_id,
-            group_id=group_id
-        ).first()
+        stats = GroupStats.query.filter_by(user_id=user_id, group_id=group_id).first()
 
         if stats:
+            logger.info(f"Stats found for user_id={user_id} in group_id={group_id}")
             return get_stats(user_id, group_id)
         else:
-            return jsonify({'message': 'Статистика не найдена'}), 404
+            logger.warning(f"No stats found for user_id={user_id} in group_id={group_id}")
+            return jsonify({'message': 'No stats found'}), 404
+
     except Exception as e:
-        print(f"Ошибка при получении статистики: {e}")
-        return jsonify({'error': 'Ошибка сервера'}), 500
+        logger.exception("Error fetching statistics")
+        return jsonify({'error': 'Server error'}), 500
 
 
 @app.route('/group_stats/<group_id>')
 def get_group_stats(group_id):
+    """
+    Endpoint to retrieve and visualize group statistics.
+    :param group_id: ID of the group.
+    :return:JSON response with group statistics or an error message if stats are not found or server error occurs.
+    """
+    logger.info(f"Fetching group stats for group_id={group_id}")
+
     try:
         top_nsfw_users = (db.session.query(GroupStats)
                           .filter(GroupStats.group_id == group_id)
@@ -300,20 +339,25 @@ def get_group_stats(group_id):
                                        GroupStats.count_nsfw_photos_sent).desc())
                             .all())
 
-        return jsonify({
+        response_data = {
             'top_nsfw_users': [
-                {'user_id': stats.user_id, 'username': stats.username, 'nsfw_count': stats.count_nsfw_photos_sent} for
-                stats in top_nsfw_users],
-            'top_active_users': [{'user_id': stats.user_id, 'username': stats.username,
-                                  'total_messages': stats.count_test_messages_sent +
-                                                    stats.count_safe_photos_sent +
-                                                    stats.count_nsfw_photos_sent}
-                                 for stats in top_active_users]
-        }), 200
+                {'user_id': stats.user_id, 'username': stats.username, 'nsfw_count': stats.count_nsfw_photos_sent}
+                for stats in top_nsfw_users
+            ],
+            'top_active_users': [
+                {'user_id': stats.user_id, 'username': stats.username,
+                 'total_messages': (stats.count_test_messages_sent +
+                                    stats.count_safe_photos_sent +
+                                    stats.count_nsfw_photos_sent)}
+                for stats in top_active_users
+            ]
+        }
+        logger.info(f"Successfully fetched group stats for group_id={group_id}")
+        return jsonify(response_data), 200
 
     except Exception as e:
-        print(f"Ошибка при получении статистики группы: {e}")
-        return jsonify({'error': 'Ошибка сервера'}), 500
+        logger.exception(f"Error fetching group stats for group_id={group_id}")
+        return jsonify({'error': 'Server error'}), 500
 
 
 if __name__ == '__main__':

@@ -1,23 +1,189 @@
-## Documentation for the image processing API
+# Documentation for the image processing API
 
-### General description
+## General description
 
 This API provides functionality for uploading images and performing various processing operations such as censorship,
 classification, and detection of objects in an image. The API is implemented in Flask and uses various internal
 functions for image processing.
+
 The main server code is in the file `src/app/app.py`
 
-### The main components
+**Base URL**: http://localhost:5000, when running through Docker http://server:5000
 
-1. **`upload_file(action)`** is the main API entry point that processes uploaded files and delegates them for processing
-   depending on the specified action.
+## Data Formats
+**Supported Formats**: JSON for responses, multipart/form-data for requests with files.
 
-2. **`sensor_image(filepath)`** is a function for censoring images.
+## Endpoints
 
-3. **`classify_image(filepath)`** is a function for classifying images based on content.
+### POST /censor_colour
+#### Description
+Uploads an image and performs censorship using the specified color.
 
-4. **`detect_image(filepath)`** is a function for detecting objects in an image.
+#### Request Body (multipart/form-data)
+- file (file): The image to upload.
+- colour (string): The color to use for censorship.
 
+#### Example Request
+`curl -X POST "http://localhost:5000/censor_colour" -F "file=@/path/to/your/image.jpg" -F "colour=red"`
+
+#### Responses
+
+##### Success (200)
+    {"message": "Image censored with colour",
+    "censored_image_path": "uploads/image_censored.jpg"}
+
+##### Error (500)
+    {"error": "Internal Server Error"}
+
+### POST /classify
+
+#### Description
+Uploads an image and performs classification on it.
+
+#### Request Body (multipart/form-data)
+- file (file): The image to upload.
+
+#### Example Request
+`curl -X POST "http://localhost:5000/classify" -F "file=@/path/to/your/image.jpg"`
+
+#### Responses
+##### Success (200)
+    {"safe": 0.987,
+    "unsafe": 0.013}
+
+##### Error (500)
+    { "error": "Internal Server Error"}
+
+### POST /detect
+
+#### Description
+Uploads an image and performs object detection on it.
+
+#### Request Body (multipart/form-data)
+- file (file): The image to upload.
+
+#### Example Request
+`curl -X POST "http://localhost:5000/detect" -F "file=@/path/to/your/image.jpg"`
+
+#### Responses
+##### Success (200)
+    { "detected_parts": [
+        {
+            "class": "face_female",
+            "score": 0.987
+        },
+        {
+            "class": "face_male",
+            "score": 0.876
+        }
+    ]}
+
+##### Error (500)
+    { "error": "Internal Server Error"}
+
+### POST /message
+
+#### Description
+Logs a message containing information about the user and the message.
+
+#### Headers
+- Content-Type: application/json
+
+#### Request Body (application/json)
+    {"username": "user123",
+    "user_id": 1,
+    "group_id": 2,
+    "message": "This is a sample message",
+    "is_text": 1,
+    "is_nsfw": 0}
+
+#### Example Request
+    curl -X POST "http://localhost:5000/message" -H "Content-Type: application/json" -d '{
+    "username": "user123",
+    "user_id": 1,
+    "group_id": 2,
+    "message": "This is a sample message",
+    "is_text": 1,
+    "is_nsfw": 0
+    }
+
+#### Responses
+##### Success (200)
+    { "message": "Message logged successfully"}
+
+##### Error (500)
+    { "error": "Internal Server Error"}
+
+### GET /stats/{group_id}/{user_id}
+
+#### Description
+Retrieves statistics for a specific user within a specified group.
+
+#### Request Parameters
+- group_id (path): The ID of the group.
+- user_id (path): The ID of the user.
+
+#### Example Request
+`curl -X GET "http://localhost:5000/stats/1/123"`
+
+#### Responses
+
+##### Success (200)
+    {"user_id": 123,
+    "group_id": 1,
+    "username": "user123",
+    "count_test_messages_sent": 50,
+    "count_safe_photos_sent": 10,
+    "count_nsfw_photos_sent": 5,
+    "last_active": "2023-10-01T12:34:56" }
+
+##### Not Found (404)
+    {"message": "Статистика не найдена"}
+
+##### Error (500)
+    {"error": "Ошибка сервера"}
+
+### GET /group_stats/{group_id}
+
+#### Description
+Retrieves statistics for the top NSFW users and the top active users within a specified group.
+
+#### Request Parameters
+- group_id (path): The ID of the group.
+
+#### Example Request
+`curl -X GET "http://localhost:5000/group_stats/1"`
+
+#### Responses
+
+##### Success (200)
+    {"top_nsfw_users": [
+        {
+            "user_id": 123,
+            "username": "user123",
+            "nsfw_count": 5
+        },
+        {
+            "user_id": 456,
+            "username": "user456",
+            "nsfw_count": 3
+        }
+    ],
+    "top_active_users": [
+        {
+            "user_id": 123,
+            "username": "user123",
+            "total_messages": 65
+        },
+        {
+            "user_id": 789,
+            "username": "user789",
+            "total_messages": 50
+        }
+    ]}
+
+##### Error (500)
+    { "error": "Ошибка сервера" }
 ### Answers of server:
 
 - _200 OK_: Successful file processing. Returns results depending on the action.
@@ -28,48 +194,20 @@ The main server code is in the file `src/app/app.py`
 - _409 Conflict_: Server is trying to register a new user with a username that is already occupied
 - _500 Internal Server Error_: Fatal server error when processing a file.
 
-### Usage examples in terminal
+### Code examples
 
-Enter commands in terminal.
-For items 1-3, you need to upload the image to the folder `src/app/uploads` (it will be created automatically when the server starts).
-The censored images will appear there too.
-
-* If you are in the folder `uploads` , then just write the name of the uploaded file instead of `path_to_image`
-
-#### 1. **Image censor request**:
-   `curl -X POST -F "file=@path_to_image.jpg" http://localhost:5000/censor`
-
-   **Return**: the censored image to the folder `uploads` by appending to the file name `_censored`
-
-#### 2. **Request for image classification**:
-   `curl -X POST -F "file=@path_to_image.jpg" http://localhost:5000/classify`
-
-   **Return**: classification scores for _safe_ and _unsafe_
-
-#### 3. **Request to detect objects in the image**:
-   `curl -X POST -F "file=@path_to_image.jpg" http://localhost:5000/detect`
-
-   **Return**: list of detected parts and their scores
-
-- Enter the name of user instead of `new_user`
-
-#### 4. **Request to registrate user**:
-   `curl -X POST http://localhost:5000/register -H "Content-Type: application/json" -d "{\"username\": \"new_user\"}"`
-
-   **Return**: _User registered successfully_ if this username is unique or _Username already exists_ and then you need
-   to change the username
-
-#### 5. **Request to login user**:
-   `curl -X POST http://localhost:5000/login -H "Content-Type: application/json" -d "{\"username\": \"new_user\"}"`
-
-   **Return**: _Login successful_ if this username exists or _User not found_ if it doesn't exist
-
-### Usage examples in code
-
-#### 1. **Image censor request using Python**:
-
+In each case, make sure to replace `path_to_image.jpg` with the actual path to your image
+#### 1. **Image censor request using color**:
 `import requests, json`
 
+    url = 'http://localhost:5000/censor_colour'
+    files = {'file': open('path_to_image.jpg', 'rb')}
+    data = {'colour': 'red'}
+    response = requests.post(url, files=files, data=data)
+    if response.status_code == 200:
+        with open('uploads/path_to_image_censored.jpg', 'wb') as f:
+            f.write(response.content)
+#### 2. **Image censor request**:
     url = 'http://localhost:5000/censor'
     files = {'file': open('path_to_image.jpg', 'rb')}
     response = requests.post(url, files=files)
@@ -77,8 +215,7 @@ The censored images will appear there too.
         with open('uploads/path_to_image_censored.jpg', 'wb') as f:
             f.write(response.content)
 
-#### 2. **Request for image classification using Python**:
-
+#### 3. **Request for image classification**:
     url = 'http://localhost:5000/classify'
     files = {'file': open('path_to_image.jpg', 'rb')}
     response = requests.post(url, files=files)
@@ -86,7 +223,7 @@ The censored images will appear there too.
         print(response.json())  # This will print the classification scores for 'safe' and 'unsafe'
 
 
-#### 3. **Request to detect objects in the image using Python**:
+#### 4. **Request to detect objects in the image**:
 
     url = 'http://localhost:5000/detect'
     files = {'file': open('path_to_image.jpg', 'rb')}
@@ -94,25 +231,26 @@ The censored images will appear there too.
     if response.status_code == 200:
         print(response.json())  # This will print the list of detected parts and their scores
 
+#### 5. **Request for logging a message**:
+     url = 'http://localhost:5000/message'
+     data = {
+    'username': 'user123',
+    'user_id': 1,
+    'group_id': 2,
+    'message': 'This is a sample message',
+    'is_text': 1,
+    'is_nsfw': 0}
+    response = requests.post(url, json=data)
+    print(response.json())
 
-#### 4. **Request to register a user using Python**:
+#### 6. **Request for getting user statistics**
+     url = 'http://localhost:5000/stats/1/123'
+     response = requests.get(url)
+     print(response.json())
 
-    url = 'http://localhost:5000/register'
-    headers = {'Content-Type': 'application/json'}
-    data = json.dumps({"username": "new_user"})  # Replace 'new_user' with the desired username
-    response = requests.post(url, headers=headers, data=data)
-    print(response.text)  # This will print 'User registered successfully' or 'Username already exists'
+#### 7. **Request for getting group statistics**
+     url = 'http://localhost:5000/group_stats/1'
+     response = requests.get(url)
+     print(response.json())
 
-
-#### 5. **Request to login a user using Python**:
-
-    url = 'http://localhost:5000/login'
-    headers = {'Content-Type': 'application/json'}
-    data = json.dumps({"username": "new_user"})  # Replace 'new_user' with the desired username
-    response = requests.post(url, headers=headers, data=data)
-    print(response.text)  # This will print 'Login successful' or 'User not found'
-
-
-In each case, make sure to replace `path_to_image.jpg` with the actual path to your image and `new_user` with the actual
-username you intend to use for registration and login.
 

@@ -1,10 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from flask import Flask, request, jsonify
-from database import register_user, login_user, validate_request, User, db, draw_plot, MessageLog
-import datetime
-import matplotlib as plt
-from app import app
+
+from flask import Flask
+
+from database import register_user, login_user, validate_request
 
 
 class TestApp(unittest.TestCase):
