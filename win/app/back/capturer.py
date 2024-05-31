@@ -7,21 +7,24 @@ from windows_capture import WindowsCapture, Frame, InternalCaptureControl
 
 
 class Capturer:
-    banned_list = ['Windows Input Experience', 'NVIDIA GeForce Overlay', 'Settings', 'Program Manager']
+    banned_list = ['Windows Input Experience', 'NVIDIA GeForce Overlay', 'Settings', 'Program Manager',
+                   'BabyGuard canvas']
 
     def __init__(self):
-        self.windows_list = None
-        self.images = None
+        pass
 
     def get_screenshot(self):
         Capturer.__clear__()
-        self.windows_list = Capturer.__list_windows__()
-        for window in self.windows_list:
+        windows_list = Capturer.__list_windows__()
+        for window in windows_list:
             print(window[1])
             Capturer.__capture_window__(window[1])
 
         images = self.__get_screenshot_list__()
-        return Capturer.__merge_images__(images)
+        ans = Capturer.__merge_images__(images, windows_list)
+        Capturer.__clear__()
+
+        return ans
 
     @staticmethod
     def __list_windows__():
@@ -123,5 +126,21 @@ class Capturer:
         return images
 
     @staticmethod
-    def __merge_images__(images):
-        pass
+    def __merge_images__(images, windows):
+        rects = [win32gui.GetWindowRect(hwnd) for hwnd, _ in windows]
+
+        max_right = max((rect[2]) for rect in rects)
+        max_bottom = max((rect[3]) for rect in rects)
+
+        print(max_right, max_bottom)
+
+        final_image = Image.new("RGBA", (max_right, max_bottom), (0, 0, 0, 0))
+
+        for img, rect in zip(images, rects):
+            if img.mode != 'RGBA':
+                print("Bad mod. Converting...")
+                img = img.convert('RGBA')
+            left, top, right, bottom = rect
+            final_image.paste(img, (left, top), img)
+
+        return final_image

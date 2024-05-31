@@ -31,9 +31,6 @@ def on_closed():
     print("Capture Session Closed")
 
 
-# capture.start()
-
-
 def enum_windows_proc(hwnd, hwnd_list):
     """Callback function to handle window enumeration."""
     if win32gui.IsWindowVisible(hwnd):
@@ -57,6 +54,7 @@ def test_prints_windows():
 
 def test_capturer():
     print()
+    Capturer.__clear__()
     windows = Capturer.__list_windows__()
     print(windows)
     for window, title in windows:
@@ -67,6 +65,13 @@ def test_capturer():
         print(time.time() - t)
 
 
-test_capturer()
+def test_advanced_screenshot():
+    capturer = Capturer()
+    image = capturer.get_screenshot()
+    image.save("screenshot.png")
+
+
+test_advanced_screenshot()
+# test_capturer()
 # capturer = Capturer()
 # capturer.__capture_window__(title)
