@@ -1,0 +1,4 @@
+requests==2.32.1
+pyTelegramBotAPI==4.18.1
+nudenet==3.0.8
+matplotlib==3.9.0

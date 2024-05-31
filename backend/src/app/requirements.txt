@@ -1,0 +1,8 @@
+Flask==3.0.3
+Pillow==10.3.0
+nudenet==3.0.8
+Werkzeug==3.0.3
+nudenetclassifier==2.1.1
+flask-sqlalchemy==3.1.1
+matplotlib==3.9.0
+pandas==2.2.2

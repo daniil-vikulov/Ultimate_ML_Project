@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from trybot import handle_photo, colour
+
+from trybot import colour
 
 
 @patch('trybot.bot')
