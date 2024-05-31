@@ -314,10 +314,13 @@ def process_image(message):
                     if censored:
                         # censored = detector.censor(f'image_{image_cnt}.jpg')
                         with open(censored, 'rb') as c:
-                            bot.delete_message(message.chat.id, message.id)
-                            bot.send_photo(message.chat.id, c)  # отправили заблюренное фото
+                            # bot.delete_message(message.chat.id, message.id)
+                            # bot.send_photo(message.chat.id, c)  # отправили заблюренное фото
+                            retry_request(bot.delete_message, message.chat.id, message.id)
+                            retry_request(bot.send_photo, message.chat.id, c)
+                            user_role = retry_request(bot.get_chat_member, message.chat.id, message.from_user.id).status
                             # if юзер уже кидал порнуху то бан на другое время надо сделать проверку записи в бд
-                            user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
+                            # user_role = bot.get_chat_member(message.chat.id, message.from_user.id).status
                             if user_role == 'administrator' or user_role == 'creator':
                                 bot.send_message(message.chat.id,
                                                  "нельзя замутить/кикнуть администратора/создателя группы"
@@ -340,8 +343,10 @@ def process_image(message):
                                         mute_seconds = 3600
                                         return
                                     mute_until = time.time() + mute_seconds
-                                    bot.restrict_chat_member(message.chat.id, message.from_user.id,
-                                                             until_date=int(mute_until))
+                                    retry_request(bot.restrict_chat_member, message.chat.id, message.from_user.id,
+                                                  until_date=int(mute_until))
+                                    # bot.restrict_chat_member(message.chat.id, message.from_user.id,
+                                    #                          until_date=int(mute_until))
                                 except Exception as e:
                                     print(f'Ошибка {e}')
                         # os.remove(censored)
@@ -349,15 +354,16 @@ def process_image(message):
                         # os.remove(original)
                     # image_cnt += 1
                     else:
-                        bot.send_message(message.chat.id, "Заблюренное фото не найдено:(")
+                        retry_request(bot.send_message, message.chat.id, "Заблюренное фото не найдено:(")
+                        image_cnt += 1
                     image_cnt += 1
                 else:
-                    bot.send_message(message.chat.id, "Ошибка с блюром фотки:(")
+                    retry_request(bot.send_message, message.chat.id, "Ошибка с блюром фотки:(")
         else:
             if not detected_parts or only_face_classes:
                 keyboard = telebot.types.InlineKeyboardMarkup()
                 keyboard.add(telebot.types.InlineKeyboardButton(text="дальше", callback_data=f"next:{file_name}"))
-                bot.send_message(message.chat.id,
+                retry_request(bot.send_message, message.chat.id,
                                  "ура ура! фото приличное:)",
                                  reply_markup=keyboard)
             else:
@@ -376,7 +382,7 @@ def process_image(message):
                     telebot.types.InlineKeyboardButton(text="оранжевый", callback_data=f"colour:orange:{file_name}"))
                 keyboard.add(
                     telebot.types.InlineKeyboardButton(text="фиолетовый", callback_data=f"colour:violet:{file_name}"))
-                bot.send_message(message.chat.id,
+                retry_request(bot.send_message, message.chat.id,
                                  "в вашем фото был обнаружен непристойный контент, выберите цвет для блюра",
                                  reply_markup=keyboard)
             image_cnt += 1
