@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from trybot import handle_start, handle_help, handle_mute, handle_kick, handle_test, handle_photo, handle_stats, \
-    write_ans, next_img, colour
+
+from trybot import handle_start, handle_help, handle_mute, handle_kick, handle_test, write_ans, next_img
 
 
 @patch('trybot.bot')

@@ -26,6 +26,15 @@ services:
     environment:
       SERVER_URL: http://server:5000
 
+  cleanup:
+    build:
+      context: ./cleanup
+    restart: always
+    volumes:
+      - ./backend/src/app/uploads:/cleanup/uploads
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge

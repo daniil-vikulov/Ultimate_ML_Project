@@ -138,10 +138,10 @@ Retrieves statistics for a specific user within a specified group.
     "last_active": "2023-10-01T12:34:56" }
 
 ##### Not Found (404)
-    {"message": "Статистика не найдена"}
+    {"message": "No stats found"}
 
 ##### Error (500)
-    {"error": "Ошибка сервера"}
+    {"error": "Server error"}
 
 ### GET /group_stats/{group_id}
 
@@ -183,7 +183,7 @@ Retrieves statistics for the top NSFW users and the top active users within a sp
     ]}
 
 ##### Error (500)
-    { "error": "Ошибка сервера" }
+    { "error": "Server error" }
 ### Answers of server:
 
 - _200 OK_: Successful file processing. Returns results depending on the action.

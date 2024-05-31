@@ -8,6 +8,9 @@ Comprehensive and easy-to-use solution for content filtering
 
 ### Telegram bot:
 
+The bot is automatically launched in Docker
+
+If you want to run it locally, then:
 1) Run file `backend/src/app/app.py` -- you are now running the server
 2) Now run file `telegrambot/trybot.py` -- you now have your bot running
 
